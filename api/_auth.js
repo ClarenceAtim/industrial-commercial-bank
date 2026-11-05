@@ -63,4 +63,46 @@ function requireAdmin(req, res) {
   return true;
 }
 
-module.exports = { checkPassword, issueToken, verifyToken, bearerToken, requireAdmin, TOKEN_TTL_MS };
+// Client tokens for the customer portal (client-login.html).
+// No new secret is introduced: the same ADMIN_SECRET signs them, with a
+// different scope string ("client") and a 2-hour lifetime, so a client token
+// can never be mistaken for a staff token. The token carries only the
+// account id and the expiry; the account is re-read from the database on
+// every request, so a deleted account stops working at once.
+// Tokens live in sessionStorage in the browser; nothing is stored server-side.
+const CLIENT_TOKEN_TTL_MS = 2 * 60 * 60 * 1000;
+
+function issueClientToken(accountId) {
+  const secret = process.env.ADMIN_SECRET;
+  if (!secret || !Number.isInteger(accountId)) return null;
+  const expiry = Date.now() + CLIENT_TOKEN_TTL_MS;
+  const signature = crypto
+    .createHmac('sha256', secret)
+    .update('client:' + accountId + ':' + expiry, 'utf8')
+    .digest('hex');
+  return accountId + '.' + expiry + '.' + signature;
+}
+
+function verifyClientToken(token) {
+  const secret = process.env.ADMIN_SECRET;
+  if (!secret || typeof token !== 'string') return null;
+  const parts = token.split('.');
+  if (parts.length !== 3) return null;
+  const accountId = Number(parts[0]);
+  const expiry = Number(parts[1]);
+  if (!Number.isInteger(accountId) || accountId <= 0) return null;
+  if (!Number.isFinite(expiry) || expiry <= Date.now()) return null;
+  const expected = crypto
+    .createHmac('sha256', secret)
+    .update('client:' + accountId + ':' + expiry, 'utf8')
+    .digest('hex');
+  if (!safeEqual(parts[2], expected)) return null;
+  return accountId;
+}
+
+// Returns the client account id from the request's Bearer token, or null.
+function clientAccountId(req) {
+  return verifyClientToken(bearerToken(req));
+}
+
+module.exports = { checkPassword, issueToken, verifyToken, bearerToken, requireAdmin, TOKEN_TTL_MS, issueClientToken, verifyClientToken, clientAccountId, CLIENT_TOKEN_TTL_MS };

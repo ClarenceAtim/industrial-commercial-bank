@@ -22,6 +22,7 @@
       <a href="branches.html" data-i18n="nav_branches">Agences et GAB</a>
       <a href="contact.html" data-i18n="nav_contact">Contact</a>
       <a href="faq.html" data-i18n="nav_faq">FAQ</a>
+      <a href="client-login.html" data-i18n="nav_client">Espace client</a>
     </nav>
     <select class="lang-select header-lang-select" aria-label="Language"><option value="fr">Français</option><option value="en">English</option><option value="es">Español</option><option value="pt">Português</option><option value="ar">العربية</option><option value="de">Deutsch</option><option value="zh">中文</option><option value="th">ไทย</option><option value="vi">Tiếng Việt</option><option value="ja">日本語</option><option value="ko">한국어</option></select>
   </div>
@@ -152,6 +153,18 @@
 
         <p class="admin-error" id="acct-load-error" hidden></p>
         <p id="acct-loading" data-i18n="admin_loading">Chargement…</p>
+
+        <div class="add-account-box">
+          <h3 data-i18n="admin_acct_add_title">Créer un compte</h3>
+          <div class="tx-form">
+            <div class="field"><label data-i18n="admin_acct_add_ref" for="add-acct-ref">Référence de la demande</label><input type="text" id="add-acct-ref" maxlength="30"></div>
+            <div class="field"><label data-i18n="admin_acct_add_balance" for="add-acct-balance">Solde initial (facultatif)</label><input type="number" id="add-acct-balance" min="0" step="0.01" inputmode="decimal"></div>
+            <div class="field"><label data-i18n="admin_deposit_currency_label" for="add-acct-currency">Devise</label><input type="text" id="add-acct-currency" value="XAF" maxlength="3"></div>
+            <button class="btn" id="add-acct-submit" type="button" data-i18n="admin_acct_add_submit">Créer le compte</button>
+          </div>
+          <p class="admin-error" id="add-acct-error" hidden></p>
+          <p class="admin-ok" id="add-acct-ok" hidden></p>
+        </div>
         <p id="acct-empty" hidden data-i18n="admin_acct_empty">Aucun compte pour le moment.</p>
 
         <div class="table-wrap">
@@ -277,6 +290,7 @@
       <li><a href="loans.html" data-i18n="nav_loans">Prêts</a></li>
       <li><a href="rates.html" data-i18n="nav_rates">Taux et frais</a></li>
       <li><a href="branches.html" data-i18n="nav_branches">Agences et GAB</a></li>
+      <li><a href="client-login.html" data-i18n="nav_client">Espace client</a></li>
     </ul></div>
     <div><h4 data-i18n="footer_contact_title">Contact</h4><ul>
       <li><span data-i18n="label_phone">Tél :</span> <span class="placeholder">[Phone to be added]</span></li>

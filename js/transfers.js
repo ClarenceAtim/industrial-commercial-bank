@@ -1,9 +1,10 @@
 /* Industrial Commercial Bank — money-transfer request page (transfers.html).
-   The client picks a destination bank from the published lists, then submits
-   a transfer REQUEST. This is not an instant transfer: the bank reviews the
-   request and processes the transfer offline. No money ever moves through
-   this site. Bank and country names are proper nouns and are shown as-is
-   in every language. */
+   The client picks a destination bank from the published lists, or chooses
+   "My bank is not listed" and types the bank name and country themselves,
+   then submits a transfer REQUEST. This is not an instant transfer: the bank
+   reviews the request and processes the transfer offline. No money ever moves
+   through this site. Bank and country names are proper nouns and are shown
+   as-is in every language. */
 (function () {
   var DESTINATION_BANKS = {
     africa: [
@@ -49,7 +50,7 @@
   };
 
   var REGIONS = ['africa', 'europe', 'america', 'asia'];
-  var selected = null; // { region, name, country }
+  var selected = null; // { region, name, country } or { region, manual: true }
   var currentRegion = 'africa';
 
   function t(key, fallback) {
@@ -78,6 +79,27 @@
       card.addEventListener('click', function () { selectBank(region, bank); });
       grid.appendChild(card);
     });
+    // "My bank is not listed": the client types the bank name and country.
+    var manualCard = document.createElement('button');
+    manualCard.type = 'button';
+    manualCard.className = 'bank-card' + (selected && selected.manual ? ' selected' : '');
+    var manualTitle = document.createElement('h3');
+    manualTitle.textContent = t('trf_bank_not_listed', "Ma banque n'est pas dans la liste");
+    manualCard.appendChild(manualTitle);
+    manualCard.addEventListener('click', function () { selectManualBank(region); });
+    grid.appendChild(manualCard);
+  }
+
+  function selectManualBank(region) {
+    selected = { region: region, manual: true, name: '', country: '' };
+    $('dest-bank').value = '';
+    $('dest-region').value = region;
+    $('dest-country').value = '';
+    $('selected-bank-name').textContent = t('trf_bank_not_listed', "Ma banque n'est pas dans la liste");
+    $('selected-bank').hidden = false;
+    $('manual-bank-fields').hidden = false;
+    renderBanks(currentRegion);
+    $('manual-bank-fields').scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   function selectBank(region, bank) {
@@ -85,6 +107,7 @@
     $('dest-bank').value = bank.name;
     $('dest-region').value = region;
     $('dest-country').value = bank.country;
+    $('manual-bank-fields').hidden = true;
     $('selected-bank-name').textContent = bank.name + ' — ' + bank.country;
     $('selected-bank').hidden = false;
     renderBanks(currentRegion);
@@ -96,6 +119,9 @@
     $('dest-bank').value = '';
     $('dest-region').value = '';
     $('dest-country').value = '';
+    $('manual-bank-name').value = '';
+    $('manual-bank-country').value = '';
+    $('manual-bank-fields').hidden = true;
     $('selected-bank').hidden = true;
     renderBanks(currentRegion);
     $('region-tabs').scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -130,6 +156,17 @@
         showError(t('trf_error_bank', "Choisissez d'abord une banque destinataire."));
         return;
       }
+      var manualBank = !!selected.manual;
+      if (manualBank) {
+        var manualName = $('manual-bank-name').value.trim();
+        var manualCountry = $('manual-bank-country').value.trim();
+        if (!manualName || !manualCountry) {
+          showError(t('trf_error_manual_bank', 'Indiquez le nom et le pays de votre banque.'));
+          return;
+        }
+        $('dest-bank').value = manualName;
+        $('dest-country').value = manualCountry;
+      }
       var data = new FormData(form);
       var amount = parseFloat(data.get('amount'));
       if (!Number.isFinite(amount) || amount <= 0) {
@@ -145,6 +182,7 @@
       });
       payload.amount = amount;
       payload.currency = String(data.get('currency') || 'XAF').trim().toUpperCase() || 'XAF';
+      payload.manual_bank = manualBank;
 
       if (submitBtn) {
         submitBtn.disabled = true;

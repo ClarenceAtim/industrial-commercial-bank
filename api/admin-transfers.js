@@ -4,7 +4,12 @@
 // (africa|europe|america|asia), search (sender name, reference or destination
 // bank), sort (created_at|reference|amount), order (asc|desc), page, per_page
 // (default 20, max 100). Returns the filtered page plus overview stats and
-// page counts. Required environment variable: DATABASE_URL.
+// page counts. Each row also carries client_approved (true once the client
+// confirmed the request in their portal) and is_manual_bank (true when the
+// client typed the bank themselves because it was not listed); both read as
+// false until the 2026-11-05 client-portal migration has run (see
+// sql/migrations/2026-11-05-client-portal.sql). Required environment
+// variable: DATABASE_URL.
 const { getPool } = require('./_db');
 const { requireAdmin } = require('./_auth');
 
@@ -12,6 +17,33 @@ const LIST_COLUMNS =
   'id, reference, sender_name, sender_email, sender_phone, account_number, ' +
   'destination_bank, destination_region, destination_country, recipient_name, ' +
   'recipient_account, amount, currency, purpose, status, admin_note, created_at, reviewed_at';
+
+// The client_approved and is_manual_bank columns arrive with the 2026-11-05
+// client-portal migration (sql/migrations/2026-11-05-client-portal.sql).
+// Until it has run, the list still works and both flags read as false.
+async function transferColumns(pool) {
+  try {
+    const probe = await pool.query(
+      "SELECT column_name FROM information_schema.columns " +
+        "WHERE table_name = 'transfer_requests' AND column_name IN ('client_approved', 'is_manual_bank')"
+    );
+    const found = {};
+    probe.rows.forEach(function (row) { found[row.column_name] = true; });
+    return {
+      client_approved: found.client_approved
+        ? 'client_approved'
+        : 'false AS client_approved',
+      is_manual_bank: found.is_manual_bank
+        ? 'is_manual_bank'
+        : 'false AS is_manual_bank'
+    };
+  } catch (e) {
+    return {
+      client_approved: 'false AS client_approved',
+      is_manual_bank: 'false AS is_manual_bank'
+    };
+  }
+}
 
 const SORTABLE = {
   created_at: 'created_at',
@@ -80,8 +112,10 @@ module.exports = async function handler(req, res) {
     const listParams = params.slice();
     listParams.push(perPage);
     listParams.push((safePage - 1) * perPage);
+    const extraColumns = await transferColumns(pool);
     const listResult = await pool.query(
-      'SELECT ' + LIST_COLUMNS + ' FROM transfer_requests ' + whereSql +
+      'SELECT ' + LIST_COLUMNS + ', ' + extraColumns.client_approved + ', ' +
+        extraColumns.is_manual_bank + ' FROM transfer_requests ' + whereSql +
         ' ORDER BY ' + sort + ' ' + order + ', id DESC' +
         ' LIMIT $' + (listParams.length - 1) + ' OFFSET $' + listParams.length,
       listParams

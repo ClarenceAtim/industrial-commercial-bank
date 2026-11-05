@@ -80,6 +80,8 @@
       deposit_received: t('admin_event_deposit_received', 'Dépôt reçu — compte actif'),
       deposit_recorded: t('admin_event_deposit_recorded', 'Dépôt enregistré'),
       withdrawal_recorded: t('admin_event_withdrawal_recorded', 'Retrait enregistré'),
+      account_created: t('admin_event_account_created', 'Compte créé'),
+      account_deleted: t('admin_event_account_deleted', 'Compte supprimé'),
       account_hold: t('admin_event_account_hold', 'Compte bloqué'),
       account_released: t('admin_event_account_released', 'Compte débloqué'),
       reopened: t('admin_event_reopened', 'Rouverte')
@@ -601,6 +603,92 @@
       var release = button(t('admin_acct_release', 'Débloquer le compte'), '', function () { holdAccount('release', release); });
       release.dataset.armed = '0';
     }
+    var del = button(t('admin_acct_delete', 'Supprimer le compte'), 'btn-danger', function () { deleteAccount(del); });
+    del.dataset.armed = '0';
+  }
+
+  function deleteAccount(button) {
+    if (button.dataset.armed !== '1') {
+      button.dataset.armed = '1';
+      button.textContent = t('admin_acct_delete_confirm', 'Confirmer la suppression du compte ?');
+      setTimeout(function () {
+        if (button.isConnected) {
+          button.dataset.armed = '0';
+          button.textContent = t('admin_acct_delete', 'Supprimer le compte');
+        }
+      }, 5000);
+      return;
+    }
+    show($('acct-error'), false);
+    show($('acct-ok'), false);
+    fetch('/api/admin-account?id=' + state.acctDetailId, {
+      method: 'DELETE',
+      headers: { 'Authorization': 'Bearer ' + token() }
+    })
+      .then(function (r) {
+        if (r.status === 401) { authFailed(); throw new Error('auth'); }
+        return r.json().then(function (data) { return { status: r.status, data: data }; });
+      })
+      .then(function (pair) {
+        if (!pair.data.ok) throw new Error(pair.data.error || 'delete');
+        var ok = $('acct-ok');
+        ok.textContent = t('admin_acct_delete_done', 'Compte supprimé.');
+        show(ok, true);
+        show($('acct-detail'), false);
+        state.acctDetailId = null;
+        loadAccounts();
+      })
+      .catch(function (e) {
+        if (e.message === 'auth') return;
+        var err = $('acct-error');
+        err.textContent =
+          e.message === 'nonzero_balance' ? t('admin_acct_delete_nonzero', 'Le solde doit être à zéro pour supprimer ce compte.') :
+          e.message === 'account_on_hold' ? t('admin_acct_delete_hold', "Débloquez d'abord le compte pour pouvoir le supprimer.") :
+          t('admin_acct_delete_error', 'Le compte n\'a pas pu être supprimé.');
+        show(err, true);
+      });
+  }
+
+  function createAccount() {
+    var errEl = $('add-acct-error');
+    var okEl = $('add-acct-ok');
+    show(errEl, false);
+    show(okEl, false);
+    var reference = $('add-acct-ref').value.trim();
+    if (!reference) {
+      errEl.textContent = t('admin_acct_add_error', 'Le compte n\'a pas pu être créé.');
+      show(errEl, true);
+      return;
+    }
+    var balance = $('add-acct-balance').value.trim();
+    var currency = ($('add-acct-currency').value || 'XAF').trim().toUpperCase() || 'XAF';
+    fetch('/api/admin-accounts', {
+      method: 'POST',
+      headers: headers(),
+      body: JSON.stringify({ reference: reference, opening_balance: balance, currency: currency })
+    })
+      .then(function (r) {
+        if (r.status === 401) { authFailed(); throw new Error('auth'); }
+        return r.json().then(function (data) { return { status: r.status, data: data }; });
+      })
+      .then(function (pair) {
+        if (!pair.data.ok) throw new Error(pair.data.error || 'create');
+        okEl.textContent = t('admin_acct_add_done', 'Compte créé.') +
+          (pair.data.account ? ' ' + pair.data.account.account_number : '');
+        show(okEl, true);
+        $('add-acct-ref').value = '';
+        $('add-acct-balance').value = '';
+        $('add-acct-currency').value = 'XAF';
+        loadAccounts();
+      })
+      .catch(function (e) {
+        if (e.message === 'auth') return;
+        errEl.textContent =
+          e.message === 'account_exists' ? t('admin_acct_add_exists', 'Cette demande a déjà un compte.') :
+          e.message === 'not_eligible' ? t('admin_acct_add_not_eligible', "Cette demande doit d'abord être approuvée.") :
+          t('admin_acct_add_error', 'Le compte n\'a pas pu être créé.');
+        show(errEl, true);
+      });
   }
 
   function recordTransaction() {
@@ -737,10 +825,13 @@
         rows.forEach(function (trf) {
           var tr = document.createElement('tr');
           tr.className = 'clickable-row';
+          var bankLabel = trf.destination_bank + ' (' + trf.destination_country + ')';
+          if (trf.is_manual_bank) bankLabel += ' — ' + t('admin_trf_manual', 'Banque saisie manuellement');
+          if (trf.client_approved) bankLabel += ' · ' + t('admin_trf_client_approved', 'Approuvé par le client');
           tr.innerHTML =
             '<td data-label="' + escapeHtml(t('admin_col_ref', 'Référence')) + '">' + escapeHtml(trf.reference) + '</td>' +
             '<td data-label="' + escapeHtml(t('admin_trf_col_sender', 'Expéditeur')) + '">' + escapeHtml(trf.sender_name) + '</td>' +
-            '<td data-label="' + escapeHtml(t('admin_trf_col_bank', 'Banque destinataire')) + '">' + escapeHtml(trf.destination_bank + ' (' + trf.destination_country + ')') + '</td>' +
+            '<td data-label="' + escapeHtml(t('admin_trf_col_bank', 'Banque destinataire')) + '">' + escapeHtml(bankLabel) + '</td>' +
             '<td data-label="' + escapeHtml(t('admin_trf_col_amount', 'Montant')) + '">' + escapeHtml(formatMoney(trf.amount, trf.currency)) + '</td>' +
             '<td data-label="' + escapeHtml(t('admin_col_status', 'Statut')) + '"><span class="status-pill status-' + escapeHtml(trf.status) + '">' + escapeHtml(statusLabel(trf.status)) + '</span></td>' +
             '<td data-label="' + escapeHtml(t('admin_col_date', 'Date')) + '">' + escapeHtml(formatDate(trf.created_at)) + '</td>';
@@ -771,13 +862,19 @@
     show($('trf-error'), false);
     show($('trf-ok'), false);
     $('trf-ref').textContent = trf.reference + ' — ' + trf.sender_name;
+    var bankDetail = trf.destination_bank + ' (' + trf.destination_country + ')';
+    if (trf.is_manual_bank) bankDetail += ' — ' + t('admin_trf_manual', 'Banque saisie manuellement');
+    var clientApproval = trf.client_approved
+      ? t('admin_trf_client_approved', 'Approuvé par le client')
+      : t('admin_trf_client_pending', "En attente de l'approbation du client");
     var fields = [
       [t('admin_trf_col_sender', 'Expéditeur'), trf.sender_name],
       [t('trf_sender_email', 'Votre adresse e-mail'), trf.sender_email],
       [t('trf_sender_phone', 'Votre téléphone (facultatif)'), trf.sender_phone || '—'],
       [t('trf_account_number', 'Votre numéro de compte'), trf.account_number],
-      [t('admin_trf_col_bank', 'Banque destinataire'), trf.destination_bank + ' (' + trf.destination_country + ')'],
+      [t('admin_trf_col_bank', 'Banque destinataire'), bankDetail],
       [t('admin_trf_region_label', 'Région'), trfRegionLabel(trf.destination_region)],
+      [t('admin_trf_client_label', 'Approbation du client'), clientApproval],
       [t('trf_recipient_name', 'Nom du bénéficiaire'), trf.recipient_name],
       [t('trf_recipient_account', 'Numéro de compte du bénéficiaire'), trf.recipient_account],
       [t('admin_trf_col_amount', 'Montant'), formatMoney(trf.amount, trf.currency)],
@@ -937,6 +1034,7 @@
       state.acctDetailId = null;
     });
     $('tx-submit').addEventListener('click', recordTransaction);
+    $('add-acct-submit').addEventListener('click', createAccount);
     var trfSearchTimer = null;
     $('trf-search').addEventListener('input', function () {
       clearTimeout(trfSearchTimer);

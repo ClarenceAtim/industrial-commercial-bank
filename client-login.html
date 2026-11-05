@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Industrial Commercial Bank — Espace client</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<header class="site-header">
+  <div class="header-inner">
+    <a class="brand" href="index.html"><img src="images/logo.svg" alt="Logo Industrial Commercial Bank"><span>Industrial Commercial Bank<small data-i18n="brand_tag">Une banque bâtie sur des fondations solides</small></span></a>
+    <button class="nav-toggle" aria-label="Menu">☰</button>
+    <nav class="main-nav">
+      <a href="index.html" data-i18n="nav_home">Accueil</a>
+      <a href="personal.html" data-i18n="nav_personal">Particuliers</a>
+      <a href="business.html" data-i18n="nav_business">Entreprises</a>
+      <a href="loans.html" data-i18n="nav_loans">Prêts</a>
+      <a href="digital.html" data-i18n="nav_digital">Banque digitale</a>
+      <a href="transfers.html" data-i18n="nav_transfers">Transferts</a>
+      <a href="rates.html" data-i18n="nav_rates">Taux et frais</a>
+      <a href="branches.html" data-i18n="nav_branches">Agences et GAB</a>
+      <a href="contact.html" data-i18n="nav_contact">Contact</a>
+      <a href="faq.html" data-i18n="nav_faq">FAQ</a>
+      <a href="client-login.html" class="active" data-i18n="nav_client">Espace client</a>
+    </nav>
+    <select class="lang-select header-lang-select" aria-label="Language"><option value="fr">Français</option><option value="en">English</option><option value="es">Español</option><option value="pt">Português</option><option value="ar">العربية</option><option value="de">Deutsch</option><option value="zh">中文</option><option value="th">ไทย</option><option value="vi">Tiếng Việt</option><option value="ja">日本語</option><option value="ko">한국어</option></select>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="container">
+    <h1 data-i18n="client_login_title">Espace client</h1>
+    <p data-i18n="client_login_sub">Connectez-vous avec votre numéro de compte, votre référence de demande et votre adresse e-mail.</p>
+    <div class="notice-box"><p data-i18n="client_note">Cet espace affiche votre solde et vos demandes. Aucun mouvement d'argent n'est effectué depuis ce site : les dépôts, les retraits et les virements sont traités par la banque elle-même.</p></div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container">
+    <form id="client-login-form">
+      <fieldset>
+        <legend data-i18n="client_login_title">Espace client</legend>
+        <div class="field"><label data-i18n="client_login_account" for="client-account-number">Numéro de compte</label><input type="text" id="client-account-number" name="account_number" required autocomplete="off"></div>
+        <div class="field"><label data-i18n="client_login_ref" for="client-reference">Référence de la demande</label><input type="text" id="client-reference" name="reference" required autocomplete="off"></div>
+        <div class="field"><label data-i18n="client_login_email" for="client-email">Adresse e-mail</label><input type="email" id="client-email" name="email" required autocomplete="email"></div>
+      </fieldset>
+      <p><small data-i18n="client_login_note">Aucun mot de passe n'est nécessaire : utilisez le numéro de compte, la référence et l'adresse e-mail reçus de la banque.</small></p>
+      <button class="btn" type="submit" data-i18n="client_login_btn">Se connecter</button>
+    </form>
+    <div class="form-error" id="client-login-error">
+      <h3 data-i18n="client_login_error">Ces informations ne correspondent à aucun compte actif.</h3>
+    </div>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="footer-inner">
+    <div><h4>Industrial Commercial Bank</h4><p data-i18n="footer_about">Industrial Commercial Bank propose des services bancaires simples et fiables pour les particuliers et les entreprises.</p></div>
+    <div><h4 data-i18n="footer_links_title">Liens rapides</h4><ul>
+      <li><a href="personal.html" data-i18n="nav_personal">Particuliers</a></li>
+      <li><a href="business.html" data-i18n="nav_business">Entreprises</a></li>
+      <li><a href="loans.html" data-i18n="nav_loans">Prêts</a></li>
+      <li><a href="rates.html" data-i18n="nav_rates">Taux et frais</a></li>
+      <li><a href="branches.html" data-i18n="nav_branches">Agences et GAB</a></li>
+      <li><a href="client-login.html" data-i18n="nav_client">Espace client</a></li>
+    </ul></div>
+    <div><h4 data-i18n="footer_contact_title">Contact</h4><ul>
+      <li><span data-i18n="label_phone">Tél :</span> <span class="placeholder">[Phone to be added]</span></li>
+      <li><span data-i18n="label_email">E-mail :</span> <span class="placeholder">[Email to be added]</span></li>
+      <li><span data-i18n="label_address">Adresse :</span> <span class="placeholder">[Address to be added]</span></li>
+    </ul></div>
+    <div><h4 data-i18n="footer_legal_title">Mentions légales</h4><ul>
+      <li><a href="legal.html" data-i18n="footer_legal_link">Confidentialité et conditions</a></li>
+      <li><a href="faq.html" data-i18n="nav_faq">FAQ</a></li>
+      <li><a href="contact.html" data-i18n="nav_contact">Contact</a></li>
+    </ul></div>
+  </div>
+  <div class="footer-bottom"><span data-i18n="footer_rights">© Industrial Commercial Bank. Tous droits réservés.</span><div class="footer-lang"><label for="footer-lang-select" data-i18n="footer_lang_label">Langue</label><select id="footer-lang-select" class="lang-select" aria-label="Language"><option value="fr">Français</option><option value="en">English</option><option value="es">Español</option><option value="pt">Português</option><option value="ar">العربية</option><option value="de">Deutsch</option><option value="zh">中文</option><option value="th">ไทย</option><option value="vi">Tiếng Việt</option><option value="ja">日本語</option><option value="ko">한국어</option></select></div></div>
+</footer>
+<!-- WhatsApp button: number to be added — links to contact page until then -->
+<a class="wa-btn" href="contact.html" title="WhatsApp number to be added" aria-label="WhatsApp (number to be added)">💬</a>
+<script src="js/main.js"></script>
+<script src="js/translator.js"></script>
+<script src="js/client.js"></script>
+</body>
+</html>
