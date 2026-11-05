@@ -35,7 +35,7 @@ def header(active, title):
     <button class="nav-toggle" aria-label="Menu">☰</button>
     <nav class="main-nav">{links}
     </nav>
-    <div class="lang-switch"><button data-lang="fr" class="active">FR</button><button data-lang="en">EN</button></div>
+    <select class="lang-select header-lang-select" aria-label="Language"><option value="fr">Français</option><option value="en">English</option><option value="es">Español</option><option value="pt">Português</option><option value="ar">العربية</option><option value="de">Deutsch</option><option value="zh">中文</option><option value="th">ไทย</option><option value="vi">Tiếng Việt</option><option value="ja">日本語</option><option value="ko">한국어</option></select>
   </div>
 </header>
 """
@@ -62,7 +62,7 @@ FOOTER = """
       <li><a href="contact.html" data-i18n="nav_contact">Contact</a></li>
     </ul></div>
   </div>
-  <div class="footer-bottom"><span data-i18n="footer_rights">© Industrial Commercial Bank. Tous droits réservés. Site vitrine — Phase 1.</span></div>
+  <div class="footer-bottom"><span data-i18n="footer_rights">© Industrial Commercial Bank. Tous droits réservés. Site vitrine — Phase 1.</span><div class="footer-lang"><label for="footer-lang-select" data-i18n="footer_lang_label">Langue</label><select id="footer-lang-select" class="lang-select" aria-label="Language"><option value="fr">Français</option><option value="en">English</option><option value="es">Español</option><option value="pt">Português</option><option value="ar">العربية</option><option value="de">Deutsch</option><option value="zh">中文</option><option value="th">ไทย</option><option value="vi">Tiếng Việt</option><option value="ja">日本語</option><option value="ko">한국어</option></select></div></div>
 </footer>
 <!-- WhatsApp button: number to be added — links to contact page until then -->
 <a class="wa-btn" href="contact.html" title="WhatsApp number to be added" aria-label="WhatsApp (number to be added)">💬</a>
