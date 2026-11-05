@@ -22,7 +22,8 @@
       <a href="branches.html" data-i18n="nav_branches">Agences et GAB</a>
       <a href="contact.html" data-i18n="nav_contact">Contact</a>
       <a href="faq.html" data-i18n="nav_faq">FAQ</a>
-      <a href="client-login.html" class="active" data-i18n="nav_client">Espace client</a>
+      <a href="client-account.html" data-i18n="nav_client">Espace client</a>
+      <a href="client-login.html" class="active" data-nav-signin data-i18n="nav_signin">Se connecter</a>
     </nav>
     <select class="lang-select header-lang-select" aria-label="Language"><option value="fr">Français</option><option value="en">English</option><option value="es">Español</option><option value="pt">Português</option><option value="ar">العربية</option><option value="de">Deutsch</option><option value="zh">中文</option><option value="th">ไทย</option><option value="vi">Tiếng Việt</option><option value="ja">日本語</option><option value="ko">한국어</option></select>
   </div>
@@ -46,11 +47,16 @@
         <div class="field"><label data-i18n="client_login_email" for="client-email">Adresse e-mail</label><input type="email" id="client-email" name="email" required autocomplete="email"></div>
       </fieldset>
       <p><small data-i18n="client_login_note">Aucun mot de passe n'est nécessaire : utilisez le numéro de compte, la référence et l'adresse e-mail reçus de la banque.</small></p>
+      <p id="client-login-next" hidden><small data-i18n="client_login_next">Connectez-vous pour continuer vers la page demandée.</small></p>
       <button class="btn" type="submit" data-i18n="client_login_btn">Se connecter</button>
     </form>
     <div class="form-error" id="client-login-error">
       <h3 data-i18n="client_login_error">Ces informations ne correspondent à aucun compte actif.</h3>
     </div>
+    <hr>
+    <h2 data-i18n="client_login_create_title">Nouveau client ?</h2>
+    <p data-i18n="client_login_create_text">Ouvrez un compte en ligne : la banque examine votre demande, puis vous pourrez vous connecter ici dès que votre compte est créé.</p>
+    <p><a class="btn btn-outline" href="open-account.html" data-i18n="client_login_create_btn">Créer un compte</a></p>
   </div>
 </section>
 
@@ -63,7 +69,8 @@
       <li><a href="loans.html" data-i18n="nav_loans">Prêts</a></li>
       <li><a href="rates.html" data-i18n="nav_rates">Taux et frais</a></li>
       <li><a href="branches.html" data-i18n="nav_branches">Agences et GAB</a></li>
-      <li><a href="client-login.html" data-i18n="nav_client">Espace client</a></li>
+      <li><a href="client-account.html" data-i18n="nav_client">Espace client</a></li>
+      <li><a href="client-login.html" class="active" data-nav-signin data-i18n="nav_signin">Se connecter</a></li>
     </ul></div>
     <div><h4 data-i18n="footer_contact_title">Contact</h4><ul>
       <li><span data-i18n="label_phone">Tél :</span> <span class="placeholder">[Phone to be added]</span></li>

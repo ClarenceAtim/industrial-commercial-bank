@@ -210,6 +210,43 @@ details (they are on the approval/deposit emails the bank already sends).
   A request belonging to another account answers 404, as if it did not
   exist.
 
+### Service pages are gated behind sign-in — the dashboard is the hub
+
+The service pages — `transfers.html`, `loans.html`, `personal.html`,
+`business.html`, `digital.html` — carry `data-gated="true"` on `<body>`.
+`js/client.js` (`requireClientLogin`) sends a visitor without a client
+token to `client-login.html?next=<the page they wanted>`; after a
+successful sign-in they are returned to that page. The `next` value is
+validated (a plain same-site `*.html` name only — no `//`, no `http:`,
+no `..`), and anything unsafe falls back to `client-account.html`.
+Public pages (`index.html`, `rates.html`, `branches.html`, `contact.html`,
+`faq.html`, `legal.html`) and the account-application page
+(`open-account.html`) are NOT gated. The gate is a convenience redirect
+only — the APIs still check the client token on every request.
+
+`client-login.html` is the single entry point with both paths: sign in
+with account number + reference + email, or — for a new customer —
+**Create an account**, which goes to `open-account.html`. The page says
+plainly that the bank reviews a new application first and the customer
+can sign in once their account is created; it does not promise an
+immediate login after applying.
+
+`client-account.html` is the signed-in customer's hub: balance shown
+prominently, recent transactions, transfer requests with Approve buttons,
+and a services section linking to New transfer, Apply for a loan,
+Personal banking, Business banking and Digital banking. While signed in,
+the gated pages open normally. On the transfer form the signed-in
+client's account number is prefilled from their account view and made
+read-only (the sign-in token carries no email address, so the email
+field is left for the client to fill in).
+
+Every public page's header and footer carry **Espace client**
+(`client-account.html`, the dashboard) beside **Sign in**
+(`client-login.html`). When a client is signed in, "Sign in" becomes
+"Sign out": it clears the client session token and returns to the
+homepage. `admin.html` is untouched — the staff dashboard keeps its own
+login and is not affected by client nav state.
+
 ### Database migration — run in Neon before/at deploy time
 
 Run `sql/migrations/2026-11-05-client-portal.sql` in the Neon SQL editor

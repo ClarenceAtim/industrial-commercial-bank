@@ -1,11 +1,17 @@
 /* Industrial Commercial Bank — client portal (client-login.html,
-   client-account.html). A customer signs in with the three things they
-   already received from the bank — account number, application reference
-   and email address — no password to remember. The 2-hour token lives in
-   sessionStorage only. This page only ever shows the signed-in customer's
-   own balance, movements and transfer requests, and lets them confirm a
-   pending transfer request; the bank still reviews it afterwards. No money
-   ever moves through this site. */
+   client-account.html) and the client gate for the service pages.
+   A customer signs in with the three things they already received from
+   the bank — account number, application reference and email address —
+   no password to remember. The 2-hour token lives in sessionStorage only.
+   This page only ever shows the signed-in customer's own balance,
+   movements and transfer requests, and lets them confirm a pending
+   transfer request; the bank still reviews it afterwards. No money
+   ever moves through this site.
+   Gating: the service pages (transfers, loans, personal, business,
+   digital) carry data-gated on <body>. Without a client token the
+   visitor is sent to the sign-in page, which brings them back to the
+   page they asked for after signing in. The gate is a convenience
+   redirect — the APIs still check the token on every request. */
 (function () {
   var TOKEN_KEY = 'icb-client-token';
 
@@ -52,6 +58,76 @@
       active: t('admin_status_active', 'Actif'),
       rejected: t('admin_status_rejected', 'Refusée')
     }[status] || status;
+  }
+  /* Only a plain same-site page name is ever accepted as a return target:
+     no slashes, no protocol, no parent-directory tricks. */
+  function safeNext(value) {
+    if (!value || typeof value !== 'string') return null;
+    try { value = decodeURIComponent(value); } catch (e) { return null; }
+    if (!/^[A-Za-z0-9_-]+\.html$/.test(value)) return null;
+    if (value === 'client-login.html') return null;
+    return value;
+  }
+  function nextParam() {
+    try {
+      var params = new URLSearchParams(window.location.search);
+      return safeNext(params.get('next'));
+    } catch (e) { return null; }
+  }
+  function currentPage() {
+    var page = window.location.pathname.split('/').pop();
+    return page || 'index.html';
+  }
+  /* Gated service page: no client token, no service. Runs as soon as this
+     script loads (it is included at the end of <body>), so the visitor is
+     sent to sign-in before they can use the page. */
+  function requireClientLogin() {
+    if (!document.body || document.body.getAttribute('data-gated') !== 'true') return;
+    if (token()) return;
+    var target = 'client-login.html?next=' + encodeURIComponent(currentPage());
+    window.location.replace(target);
+  }
+  /* Header and footer "Sign in" link follows the session: signed in it
+     becomes "Sign out" (clears the token, back to the homepage); signed
+     out it is a plain link to the sign-in page. */
+  function updateNav() {
+    var loggedIn = !!token();
+    document.querySelectorAll('[data-nav-signin]').forEach(function (link) {
+      if (loggedIn) {
+        link.textContent = t('nav_signout', 'Se déconnecter');
+        link.setAttribute('href', 'index.html');
+        link.onclick = function (e) {
+          e.preventDefault();
+          setToken(null);
+          window.location.href = 'index.html';
+        };
+      } else {
+        link.textContent = t('nav_signin', 'Se connecter');
+        link.setAttribute('href', 'client-login.html');
+        link.onclick = null;
+      }
+    });
+  }
+  /* On the transfer page, a signed-in client's own account number is
+     already known from their account view — prefill it and lock the field
+     so the request is filed against the right account. The sign-in token
+     carries no email address, so the email field is left for the client
+     to fill in as before. */
+  function prefillTransferForm() {
+    var field = $('trf-account-number');
+    if (!field || !$('transfer-form') || !token()) return;
+    fetch('/api/client-account', { headers: { 'Authorization': 'Bearer ' + token() } })
+      .then(function (r) {
+        if (!r.ok) throw new Error('auth');
+        return r.json();
+      })
+      .then(function (data) {
+        if (data.ok && data.account && data.account.account_number) {
+          field.value = data.account.account_number;
+          field.readOnly = true;
+        }
+      })
+      .catch(function () { /* leave the field editable if the session is stale */ });
   }
   function signOut(messageKey, fallback) {
     setToken(null);
@@ -162,9 +238,16 @@
       });
   }
 
+  requireClientLogin();
   document.addEventListener('DOMContentLoaded', function () {
+    updateNav();
+    document.addEventListener('icb-lang', updateNav);
+    prefillTransferForm();
+
     var loginForm = $('client-login-form');
     if (loginForm) {
+      var next = nextParam();
+      if (next) show($('client-login-next'), true);
       var expired = null;
       try { expired = sessionStorage.getItem('icb-client-expired'); sessionStorage.removeItem('icb-client-expired'); } catch (e) {}
       if (expired) {
@@ -173,7 +256,7 @@
         if (heading) heading.textContent = t('client_session_expired', 'Votre session a expiré. Veuillez vous reconnecter.');
         box.classList.add('show');
       }
-      if (token()) { window.location.href = 'client-account.html'; return; }
+      if (token()) { window.location.href = next || 'client-account.html'; return; }
       loginForm.addEventListener('submit', function (e) {
         e.preventDefault();
         var box = $('client-login-error');
@@ -191,7 +274,7 @@
           .then(function (pair) {
             if (!pair.data.ok || !pair.data.token) throw new Error('login');
             setToken(pair.data.token);
-            window.location.href = 'client-account.html';
+            window.location.href = nextParam() || 'client-account.html';
           })
           .catch(function () {
             var heading = box.querySelector('h3');
