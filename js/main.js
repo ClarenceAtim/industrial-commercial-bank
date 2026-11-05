@@ -33,11 +33,15 @@ document.addEventListener('DOMContentLoaded', function () {
   // ID upload field: show chosen file name only (no upload in Phase 1)
   var idInput = document.getElementById('id-photo');
   var idName = document.getElementById('id-photo-name');
+  function renderIdNote() {
+    if (!idInput || !idName) return;
+    var d = window.__icbDict || {};
+    var pre = d.open_file_prefix !== undefined ? d.open_file_prefix : 'Sélectionné : ';
+    var suf = d.open_file_suffix !== undefined ? d.open_file_suffix : " (non téléversé — l'envoi sécurisé arrive avec la Phase 2)";
+    idName.textContent = idInput.files.length ? pre + idInput.files[0].name + suf : '';
+  }
   if (idInput && idName) {
-    idInput.addEventListener('change', function () {
-      idName.textContent = idInput.files.length
-        ? 'Selected: ' + idInput.files[0].name + ' (not uploaded — secure upload arrives in Phase 2)'
-        : '';
-    });
+    idInput.addEventListener('change', renderIdNote);
+    document.addEventListener('icb-lang', renderIdNote);
   }
 });

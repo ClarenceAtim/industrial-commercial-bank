@@ -20,8 +20,15 @@
       var key = el.getAttribute('data-i18n-placeholder');
       if (dict[key] !== undefined) el.setAttribute('placeholder', dict[key]);
     });
+    document.querySelectorAll('[data-i18n-alt]').forEach(function (el) {
+      var key = el.getAttribute('data-i18n-alt');
+      if (dict[key] !== undefined) el.setAttribute('alt', dict[key]);
+    });
     syncControls(lang);
     try { localStorage.setItem('icb-lang', lang); } catch (e) {}
+    window.__icbDict = dict;
+    window.__icbLang = lang;
+    document.dispatchEvent(new CustomEvent('icb-lang', { detail: lang }));
   }
   function setLang(lang) {
     if (LANGS.indexOf(lang) === -1) lang = 'fr';

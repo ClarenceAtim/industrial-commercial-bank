@@ -39,33 +39,33 @@
     <form data-local-confirm="open-result">
       <fieldset>
         <legend data-i18n="open_personal_title">Informations personnelles</legend>
-        <div class="field"><label>Prénom</label><input type="text" name="first_name" required></div>
-        <div class="field"><label>Nom de famille</label><input type="text" name="last_name" required></div>
-        <div class="field"><label>Date de naissance</label><input type="date" name="dob" required></div>
-        <div class="field"><label>Nationalité</label><input type="text" name="nationality" required></div>
+        <div class="field"><label data-i18n="open_first_name">Prénom</label><input type="text" name="first_name" required></div>
+        <div class="field"><label data-i18n="open_last_name">Nom de famille</label><input type="text" name="last_name" required></div>
+        <div class="field"><label data-i18n="open_dob">Date de naissance</label><input type="date" name="dob" required></div>
+        <div class="field"><label data-i18n="open_nationality">Nationalité</label><input type="text" name="nationality" required></div>
       </fieldset>
       <fieldset>
         <legend data-i18n="open_contact_title">Coordonnées</legend>
-        <div class="field"><label>Téléphone</label><input type="tel" name="phone" required></div>
-        <div class="field"><label>Adresse e-mail</label><input type="email" name="email" required></div>
-        <div class="field"><label>Adresse de résidence</label><input type="text" name="address" required></div>
+        <div class="field"><label data-i18n="con_phone_title">Téléphone</label><input type="tel" name="phone" required></div>
+        <div class="field"><label data-i18n="open_email">Adresse e-mail</label><input type="email" name="email" required></div>
+        <div class="field"><label data-i18n="open_home_address">Adresse de résidence</label><input type="text" name="address" required></div>
       </fieldset>
       <fieldset>
         <legend data-i18n="open_id_title">Pièce d'identité</legend>
-        <div class="field"><label>Type de pièce</label><select name="id_type" required><option value="">— Choisir —</option><option>Carte nationale d'identité</option><option>Passeport</option><option>Permis de conduire</option></select></div>
-        <div class="field"><label>Numéro de la pièce</label><input type="text" name="id_number" required></div>
-        <div class="field"><label>Photo de la pièce d'identité</label><input type="file" id="id-photo" name="id_photo" accept="image/*,.pdf"><small id="id-photo-name"></small><br><small>Les pièces d'identité sont des données sensibles. Dans la version finale, elles seront transmises de façon chiffrée et traitées uniquement par la banque.</small></div>
+        <div class="field"><label data-i18n="open_id_type">Type de pièce</label><select name="id_type" required><option value="" data-i18n="open_select_prompt">— Choisir —</option><option data-i18n="open_id_card">Carte nationale d'identité</option><option data-i18n="open_id_passport">Passeport</option><option data-i18n="open_id_license">Permis de conduire</option></select></div>
+        <div class="field"><label data-i18n="open_id_number">Numéro de la pièce</label><input type="text" name="id_number" required></div>
+        <div class="field"><label data-i18n="open_id_photo">Photo de la pièce d'identité</label><input type="file" id="id-photo" name="id_photo" accept="image/*,.pdf"><small id="id-photo-name"></small><br><small data-i18n="open_id_note">Les pièces d'identité sont des données sensibles. Dans la version finale, elles seront transmises de façon chiffrée et traitées uniquement par la banque.</small></div>
       </fieldset>
       <fieldset>
         <legend data-i18n="open_account_title">Type de compte</legend>
-        <div class="field"><label>Type de compte souhaité</label><select name="account_type" required><option value="">— Choisir —</option><option>Compte courant — Particulier</option><option>Compte d'épargne — Particulier</option><option>Compte professionnel — Entreprise</option></select></div>
+        <div class="field"><label data-i18n="open_acct_type">Type de compte souhaité</label><select name="account_type" required><option value="" data-i18n="open_select_prompt">— Choisir —</option><option data-i18n="open_acct_current">Compte courant — Particulier</option><option data-i18n="open_acct_savings">Compte d'épargne — Particulier</option><option data-i18n="open_acct_biz">Compte professionnel — Entreprise</option></select></div>
       </fieldset>
       <button class="btn" type="submit" data-i18n="open_submit">Envoyer ma demande</button>
     </form>
     <div class="form-result" id="open-result">
       <h3 data-i18n="open_success_title">Demande reçue — en cours d'examen</h3>
       <p data-i18n="open_success_text">Merci ! Votre demande d'ouverture de compte a bien été enregistrée et est en cours d'examen. Notre équipe vous contactera.</p>
-      <p>Référence de démonstration : <strong data-demo-ref></strong></p>
+      <p><span data-i18n="open_demo_ref">Référence de démonstration :</span> <strong data-demo-ref></strong></p>
       <p><small data-i18n="open_demo_note">Version de démonstration : aucune donnée n'a été envoyée. Le système sécurisé d'envoi et le tableau de bord d'administration arrivent avec la Phase 2.</small></p>
     </div>
   </div>
@@ -82,12 +82,12 @@
       <li><a href="branches.html" data-i18n="nav_branches">Agences et GAB</a></li>
     </ul></div>
     <div><h4 data-i18n="footer_contact_title">Contact</h4><ul>
-      <li>Tél : <span class="placeholder">[Phone to be added]</span></li>
-      <li>E-mail : <span class="placeholder">[Email to be added]</span></li>
-      <li>Adresse : <span class="placeholder">[Address to be added]</span></li>
+      <li><span data-i18n="label_phone">Tél :</span> <span class="placeholder">[Phone to be added]</span></li>
+      <li><span data-i18n="label_email">E-mail :</span> <span class="placeholder">[Email to be added]</span></li>
+      <li><span data-i18n="label_address">Adresse :</span> <span class="placeholder">[Address to be added]</span></li>
     </ul></div>
     <div><h4 data-i18n="footer_legal_title">Mentions légales</h4><ul>
-      <li><a href="legal.html">Confidentialité et conditions</a></li>
+      <li><a href="legal.html" data-i18n="footer_legal_link">Confidentialité et conditions</a></li>
       <li><a href="faq.html" data-i18n="nav_faq">FAQ</a></li>
       <li><a href="contact.html" data-i18n="nav_contact">Contact</a></li>
     </ul></div>

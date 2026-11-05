@@ -38,9 +38,9 @@
   <div class="container">
     <h2 data-i18n="per_accts_title">Comptes</h2>
     <div class="grid">
-      <div class="card"><h3>Compte courant</h3><p>Recevez votre salaire, payez vos factures et gérez vos dépenses au quotidien, en agence ou en ligne.</p></div>
-      <div class="card"><h3>Compte d'épargne</h3><p>Mettez de l'argent de côté régulièrement et faites-le fructifier avec un taux d'épargne.</p></div>
-      <div class="card"><h3>Dépôt à terme</h3><p>Bloquez une somme pour une durée choisie et bénéficiez d'un taux défini à l'avance.</p></div>
+      <div class="card"><h3 data-i18n="per_current_title">Compte courant</h3><p data-i18n="per_current_desc">Recevez votre salaire, payez vos factures et gérez vos dépenses au quotidien, en agence ou en ligne.</p></div>
+      <div class="card"><img class="card-photo" src="images/savings-jar.jpg" alt="Bocal de pièces avec une jeune plante" data-i18n-alt="alt_savings_jar"><h3 data-i18n="per_savings_title">Compte d'épargne</h3><p data-i18n="per_savings_desc">Mettez de l'argent de côté régulièrement et faites-le fructifier avec un taux d'épargne.</p></div>
+      <div class="card"><h3 data-i18n="per_term_title">Dépôt à terme</h3><p data-i18n="per_term_desc">Bloquez une somme pour une durée choisie et bénéficiez d'un taux défini à l'avance.</p></div>
     </div>
   </div>
 </section>
@@ -48,12 +48,12 @@
 <section class="section alt">
   <div class="container">
     <h2 data-i18n="per_savcalc_title">Simulateur d'épargne</h2>
-    <p class="lead">Estimez la croissance de votre épargne. Simulation indicative uniquement.</p>
+    <p class="lead" data-i18n="per_sav_note">Estimez la croissance de votre épargne. Simulation indicative uniquement.</p>
     <div class="card">
-      <div class="field"><label>Dépôt initial</label><input type="number" id="sav-start" value="100000" min="0"></div>
-      <div class="field"><label>Versement mensuel</label><input type="number" id="sav-monthly" value="25000" min="0"></div>
-      <div class="field"><label>Taux annuel (%)</label><input type="number" id="sav-rate" value="4" min="0" step="0.1"></div>
-      <div class="field"><label>Durée (années)</label><input type="number" id="sav-years" value="5" min="1"></div>
+      <div class="field"><label data-i18n="per_sav_start">Dépôt initial</label><input type="number" id="sav-start" value="100000" min="0"></div>
+      <div class="field"><label data-i18n="per_sav_monthly">Versement mensuel</label><input type="number" id="sav-monthly" value="25000" min="0"></div>
+      <div class="field"><label data-i18n="per_sav_rate">Taux annuel (%)</label><input type="number" id="sav-rate" value="4" min="0" step="0.1"></div>
+      <div class="field"><label data-i18n="per_sav_years">Durée (années)</label><input type="number" id="sav-years" value="5" min="1"></div>
       <div class="calc-result" id="sav-result"></div>
     </div>
   </div>
@@ -63,25 +63,25 @@
   <div class="container">
     <h2 data-i18n="per_cards_title">Cartes</h2>
     <div class="grid">
-      <div class="card"><h3>Carte de débit</h3><p>Payez chez les commerçants et retirez aux guichets automatiques, dans la limite de votre solde.</p></div>
-      <div class="card"><h3>Carte prépayée</h3><p>Chargez un montant et dépensez sans compte bancaire — pratique pour les achats en ligne et les voyages.</p></div>
+      <div class="card"><h3 data-i18n="per_debit_title">Carte de débit</h3><p data-i18n="per_debit_desc">Payez chez les commerçants et retirez aux guichets automatiques, dans la limite de votre solde.</p></div>
+      <div class="card"><h3 data-i18n="per_prepaid_title">Carte prépayée</h3><p data-i18n="per_prepaid_desc">Chargez un montant et dépensez sans compte bancaire — pratique pour les achats en ligne et les voyages.</p></div>
     </div>
     <h2 style="margin-top:40px" data-i18n="per_transfers_title">Transferts et paiements</h2>
     <div class="grid">
-      <div class="card"><h3>Virements</h3><p>Envoyez de l'argent vers d'autres comptes, en agence, en ligne ou par Mobile Money.</p></div>
-      <div class="card"><h3>Paiement de factures</h3><p>Réglez vos factures d'eau, d'électricité et de téléphone depuis votre compte.</p></div>
+      <div class="card"><h3 data-i18n="per_wire_title">Virements</h3><p data-i18n="per_wire_desc">Envoyez de l'argent vers d'autres comptes, en agence, en ligne ou par Mobile Money.</p></div>
+      <div class="card"><h3 data-i18n="per_bills_title">Paiement de factures</h3><p data-i18n="per_bills_desc">Réglez vos factures d'eau, d'électricité et de téléphone depuis votre compte.</p></div>
     </div>
   </div>
 </section>
 
 <section class="section alt">
   <div class="container">
-    <h2>Convertisseur de devises</h2>
-    <p class="lead">Taux indicatifs uniquement — ce ne sont pas des cotations en direct. Les taux définitifs sont confirmés en agence ou dans l'application.</p>
+    <h2 data-i18n="per_fx_title">Convertisseur de devises</h2>
+    <p class="lead" data-i18n="per_fx_note">Taux indicatifs uniquement — ce ne sont pas des cotations en direct. Les taux définitifs sont confirmés en agence ou dans l'application.</p>
     <div class="card">
-      <div class="field"><label>Montant</label><input type="number" id="fx-amount" value="100000" min="0"></div>
-      <div class="field"><label>De</label><select id="fx-from"><option value="XAF">XAF — Franc CFA</option><option value="EUR">EUR — Euro</option><option value="USD">USD — Dollar US</option><option value="NGN">NGN — Naira</option></select></div>
-      <div class="field"><label>Vers</label><select id="fx-to"><option value="EUR">EUR — Euro</option><option value="XAF">XAF — Franc CFA</option><option value="USD">USD — Dollar US</option><option value="NGN">NGN — Naira</option></select></div>
+      <div class="field"><label data-i18n="per_fx_amount">Montant</label><input type="number" id="fx-amount" value="100000" min="0"></div>
+      <div class="field"><label data-i18n="per_fx_from">De</label><select id="fx-from"><option value="XAF" data-i18n="cur_xaf">XAF — Franc CFA</option><option value="EUR" data-i18n="cur_eur">EUR — Euro</option><option value="USD" data-i18n="cur_usd">USD — Dollar US</option><option value="NGN" data-i18n="cur_ngn">NGN — Naira</option></select></div>
+      <div class="field"><label data-i18n="per_fx_to">Vers</label><select id="fx-to"><option value="EUR" data-i18n="cur_eur">EUR — Euro</option><option value="XAF" data-i18n="cur_xaf">XAF — Franc CFA</option><option value="USD" data-i18n="cur_usd">USD — Dollar US</option><option value="NGN" data-i18n="cur_ngn">NGN — Naira</option></select></div>
       <div class="calc-result" id="fx-result"></div>
     </div>
   </div>
@@ -98,12 +98,12 @@
       <li><a href="branches.html" data-i18n="nav_branches">Agences et GAB</a></li>
     </ul></div>
     <div><h4 data-i18n="footer_contact_title">Contact</h4><ul>
-      <li>Tél : <span class="placeholder">[Phone to be added]</span></li>
-      <li>E-mail : <span class="placeholder">[Email to be added]</span></li>
-      <li>Adresse : <span class="placeholder">[Address to be added]</span></li>
+      <li><span data-i18n="label_phone">Tél :</span> <span class="placeholder">[Phone to be added]</span></li>
+      <li><span data-i18n="label_email">E-mail :</span> <span class="placeholder">[Email to be added]</span></li>
+      <li><span data-i18n="label_address">Adresse :</span> <span class="placeholder">[Address to be added]</span></li>
     </ul></div>
     <div><h4 data-i18n="footer_legal_title">Mentions légales</h4><ul>
-      <li><a href="legal.html">Confidentialité et conditions</a></li>
+      <li><a href="legal.html" data-i18n="footer_legal_link">Confidentialité et conditions</a></li>
       <li><a href="faq.html" data-i18n="nav_faq">FAQ</a></li>
       <li><a href="contact.html" data-i18n="nav_contact">Contact</a></li>
     </ul></div>

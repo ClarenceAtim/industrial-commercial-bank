@@ -108,3 +108,11 @@ tr:nth-child(even) td{background:#f6f9fd}
 .site-footer ul{list-style:none;margin:0;padding:0}
 .site-footer li{margin-bottom:6px}
 .footer-bottom{border-top:1px solid rgba(255,255,255,.2);text-align:center;padding:14px 20px;font-size:13px}
+
+.hero-photo{margin:28px 0 0}
+.hero-photo img{width:100%;max-height:420px;object-fit:cover;border-radius:var(--radius);display:block}
+.card-photo{width:100%;height:180px;object-fit:cover;border-radius:8px;margin:0 0 14px;display:block}
+.value-card{padding:0;overflow:hidden}
+.value-card img{width:100%;height:200px;object-fit:cover;display:block}
+.value-card h3{padding:18px 22px 0}
+.value-card p{padding:0 22px 22px}
