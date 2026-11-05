@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Industrial Commercial Bank — Espace personnel</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<header class="site-header">
+  <div class="header-inner">
+    <a class="brand" href="index.html"><img src="images/logo.svg" alt="Logo Industrial Commercial Bank"><span>Industrial Commercial Bank<small data-i18n="brand_tag">Une banque bâtie sur des fondations solides</small></span></a>
+    <button class="nav-toggle" aria-label="Menu">☰</button>
+    <nav class="main-nav">
+      <a href="index.html" data-i18n="nav_home">Accueil</a>
+      <a href="personal.html" data-i18n="nav_personal">Particuliers</a>
+      <a href="business.html" data-i18n="nav_business">Entreprises</a>
+      <a href="loans.html" data-i18n="nav_loans">Prêts</a>
+      <a href="digital.html" data-i18n="nav_digital">Banque digitale</a>
+      <a href="rates.html" data-i18n="nav_rates">Taux et frais</a>
+      <a href="branches.html" data-i18n="nav_branches">Agences et GAB</a>
+      <a href="contact.html" data-i18n="nav_contact">Contact</a>
+      <a href="faq.html" data-i18n="nav_faq">FAQ</a>
+    </nav>
+    <select class="lang-select header-lang-select" aria-label="Language"><option value="fr">Français</option><option value="en">English</option><option value="es">Español</option><option value="pt">Português</option><option value="ar">العربية</option><option value="de">Deutsch</option><option value="zh">中文</option><option value="th">ไทย</option><option value="vi">Tiếng Việt</option><option value="ja">日本語</option><option value="ko">한국어</option></select>
+  </div>
+</header>
+
+<section class="section">
+  <div class="container">
+
+    <div id="admin-login">
+      <h1 data-i18n="admin_login_title">Espace personnel</h1>
+      <form id="admin-login-form">
+        <div class="field"><label data-i18n="admin_password" for="admin-password">Mot de passe</label><input type="password" id="admin-password" required autocomplete="current-password"></div>
+        <p class="admin-error" id="admin-login-error" hidden></p>
+        <button class="btn" type="submit" data-i18n="admin_login_btn">Se connecter</button>
+      </form>
+    </div>
+
+    <div id="admin-panel" hidden>
+      <div class="admin-head">
+        <h1 data-i18n="admin_title">Demandes d'ouverture de compte</h1>
+        <button class="btn btn-outline" id="admin-logout" type="button" data-i18n="admin_logout">Se déconnecter</button>
+      </div>
+
+      <div class="stat-grid" id="admin-stats">
+        <div class="stat-card"><span class="stat-num" id="stat-total">—</span><span class="stat-label" data-i18n="admin_stat_total">Total</span></div>
+        <div class="stat-card"><span class="stat-num" id="stat-pending">—</span><span class="stat-label" data-i18n="admin_stat_pending">En attente</span></div>
+        <div class="stat-card"><span class="stat-num" id="stat-approved">—</span><span class="stat-label" data-i18n="admin_stat_approved">Approuvées</span></div>
+        <div class="stat-card"><span class="stat-num" id="stat-deposit">—</span><span class="stat-label" data-i18n="admin_stat_deposit">Dépôt demandé</span></div>
+        <div class="stat-card"><span class="stat-num" id="stat-active">—</span><span class="stat-label" data-i18n="admin_stat_active">Actifs</span></div>
+        <div class="stat-card"><span class="stat-num" id="stat-rejected">—</span><span class="stat-label" data-i18n="admin_stat_rejected">Refusées</span></div>
+        <div class="stat-card"><span class="stat-num" id="stat-month">—</span><span class="stat-label" data-i18n="admin_stat_month">Ce mois-ci</span></div>
+      </div>
+
+      <div class="admin-toolbar">
+        <input type="search" id="admin-search" data-i18n-placeholder="admin_search_placeholder" placeholder="Rechercher (nom, e-mail, référence)…">
+        <select id="admin-filter-status" aria-label="Statut">
+          <option value="" data-i18n="admin_filter_all">Tous les statuts</option>
+          <option value="pending" data-i18n="admin_status_pending">En attente</option>
+          <option value="approved" data-i18n="admin_status_approved">Approuvée</option>
+          <option value="deposit_requested" data-i18n="admin_status_deposit">Dépôt demandé</option>
+          <option value="active" data-i18n="admin_status_active">Actif</option>
+          <option value="rejected" data-i18n="admin_status_rejected">Refusée</option>
+        </select>
+        <select id="admin-filter-account" aria-label="Compte">
+          <option value="" data-i18n="admin_filter_all_accounts">Tous les comptes</option>
+          <option value="current" data-i18n="open_acct_current">Compte courant — Particulier</option>
+          <option value="savings" data-i18n="open_acct_savings">Compte d'épargne — Particulier</option>
+          <option value="business" data-i18n="open_acct_biz">Compte professionnel — Entreprise</option>
+        </select>
+        <label class="date-filter"><span data-i18n="admin_filter_from">Du</span> <input type="date" id="admin-date-from"></label>
+        <label class="date-filter"><span data-i18n="admin_filter_to">Au</span> <input type="date" id="admin-date-to"></label>
+        <button class="btn btn-outline" id="admin-export" type="button" data-i18n="admin_export">Exporter (CSV)</button>
+      </div>
+
+      <p class="admin-error" id="admin-load-error" hidden></p>
+      <p id="admin-loading" data-i18n="admin_loading">Chargement…</p>
+      <p id="admin-empty" hidden data-i18n="admin_empty">Aucune demande pour le moment.</p>
+
+      <div class="table-wrap">
+        <table id="admin-table" hidden>
+          <thead><tr>
+            <th><button type="button" class="sort-btn" data-sort="reference" data-i18n="admin_col_ref">Référence</button></th>
+            <th><button type="button" class="sort-btn" data-sort="last_name" data-i18n="admin_col_name">Nom</button></th>
+            <th data-i18n="admin_col_account">Compte</th>
+            <th><button type="button" class="sort-btn" data-sort="status" data-i18n="admin_col_status">Statut</button></th>
+            <th><button type="button" class="sort-btn" data-sort="created_at" data-i18n="admin_col_date">Date</button></th>
+          </tr></thead>
+          <tbody id="admin-rows"></tbody>
+        </table>
+      </div>
+
+      <div class="pager" id="admin-pager" hidden>
+        <button class="btn btn-outline" id="admin-prev" type="button" data-i18n="admin_page_prev">← Précédent</button>
+        <span id="admin-page-label"></span>
+        <button class="btn btn-outline" id="admin-next" type="button" data-i18n="admin_page_next">Suivant →</button>
+      </div>
+
+      <div id="admin-detail" hidden>
+        <button class="btn btn-outline" id="admin-back" type="button" data-i18n="admin_back">← Retour à la liste</button>
+        <h2 id="detail-ref"></h2>
+        <dl class="detail-grid" id="detail-fields"></dl>
+        <div id="detail-photo-wrap">
+          <h3 data-i18n="admin_id_photo">Pièce d'identité</h3>
+          <p id="detail-no-photo" data-i18n="admin_no_photo">Aucune photo fournie.</p>
+          <img id="detail-photo" alt="" hidden>
+        </div>
+        <h3 data-i18n="admin_timeline_title">Historique</h3>
+        <ul class="timeline" id="detail-timeline"></ul>
+        <div class="field"><label data-i18n="admin_note_label" for="detail-note">Note interne</label><textarea id="detail-note" rows="3" data-i18n-placeholder="admin_note_placeholder" placeholder="Note pour le dossier (facultatif)"></textarea></div>
+        <div class="detail-actions" id="detail-actions"></div>
+        <p class="admin-error" id="detail-error" hidden></p>
+        <p class="admin-ok" id="detail-ok" hidden></p>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="footer-inner">
+    <div><h4>Industrial Commercial Bank</h4><p data-i18n="footer_about">Industrial Commercial Bank propose des services bancaires simples et fiables pour les particuliers et les entreprises.</p></div>
+    <div><h4 data-i18n="footer_links_title">Liens rapides</h4><ul>
+      <li><a href="personal.html" data-i18n="nav_personal">Particuliers</a></li>
+      <li><a href="business.html" data-i18n="nav_business">Entreprises</a></li>
+      <li><a href="loans.html" data-i18n="nav_loans">Prêts</a></li>
+      <li><a href="rates.html" data-i18n="nav_rates">Taux et frais</a></li>
+      <li><a href="branches.html" data-i18n="nav_branches">Agences et GAB</a></li>
+    </ul></div>
+    <div><h4 data-i18n="footer_contact_title">Contact</h4><ul>
+      <li><span data-i18n="label_phone">Tél :</span> <span class="placeholder">[Phone to be added]</span></li>
+      <li><span data-i18n="label_email">E-mail :</span> <span class="placeholder">[Email to be added]</span></li>
+      <li><span data-i18n="label_address">Adresse :</span> <span class="placeholder">[Address to be added]</span></li>
+    </ul></div>
+    <div><h4 data-i18n="footer_legal_title">Mentions légales</h4><ul>
+      <li><a href="legal.html" data-i18n="footer_legal_link">Confidentialité et conditions</a></li>
+      <li><a href="faq.html" data-i18n="nav_faq">FAQ</a></li>
+      <li><a href="contact.html" data-i18n="nav_contact">Contact</a></li>
+    </ul></div>
+  </div>
+  <div class="footer-bottom"><span data-i18n="footer_rights">© Industrial Commercial Bank. Tous droits réservés.</span><div class="footer-lang"><label for="footer-lang-select" data-i18n="footer_lang_label">Langue</label><select id="footer-lang-select" class="lang-select" aria-label="Language"><option value="fr">Français</option><option value="en">English</option><option value="es">Español</option><option value="pt">Português</option><option value="ar">العربية</option><option value="de">Deutsch</option><option value="zh">中文</option><option value="th">ไทย</option><option value="vi">Tiếng Việt</option><option value="ja">日本語</option><option value="ko">한국어</option></select></div></div>
+</footer>
+<script src="js/main.js"></script>
+<script src="js/translator.js"></script>
+<script src="js/admin.js"></script>
+</body>
+</html>

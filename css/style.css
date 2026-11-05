@@ -1,4 +1,4 @@
-/* Industrial Commercial Bank — Phase 1 (frontend only) */
+/* Industrial Commercial Bank — shared stylesheet */
 :root{
   --blue:#0B3D91; --blue-mid:#1E6FB8; --blue-light:#5B9BD5;
   --blue-pale:#EAF2FB; --white:#fff; --ink:#1a2433; --muted:#5a6b82;
@@ -116,3 +116,48 @@ tr:nth-child(even) td{background:#f6f9fd}
 .value-card img{width:100%;height:200px;object-fit:cover;display:block}
 .value-card h3{padding:18px 22px 0}
 .value-card p{padding:0 22px 22px}
+
+/* Form errors */
+.form-error{display:none;border:1px solid #f0b6b6;background:#fdf0f0;border-radius:var(--radius);padding:20px;margin-top:20px}
+.form-error.show{display:block}
+.form-error h3{color:#8f1d1d;margin:0 0 8px}
+
+/* Staff dashboard */
+.admin-head{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.admin-head h1{margin:0}
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin:24px 0}
+.stat-card{border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px;background:#fff}
+.stat-num{display:block;font-size:26px;font-weight:800;color:var(--blue);line-height:1.2}
+.stat-label{font-size:13px;color:var(--muted);font-weight:600}
+.admin-toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:0 0 16px}
+.admin-toolbar input[type="search"]{flex:1;min-width:220px;padding:11px 12px;border:1px solid var(--line);border-radius:8px;font-size:15px;font-family:inherit}
+.admin-toolbar select{padding:11px 12px;border:1px solid var(--line);border-radius:8px;font-size:15px;font-family:inherit;background:#fff}
+.date-filter{display:flex;align-items:center;gap:6px;font-size:14px;font-weight:600}
+.date-filter input{padding:10px;border:1px solid var(--line);border-radius:8px;font-family:inherit}
+.table-wrap{overflow-x:auto}
+.sort-btn{background:none;border:0;color:#fff;font:inherit;font-weight:700;cursor:pointer;padding:0;text-align:left}
+.sort-btn[data-dir="asc"]::after{content:" ▲";font-size:11px}
+.sort-btn[data-dir="desc"]::after{content:" ▼";font-size:11px}
+tr.clickable-row{cursor:pointer}
+tr.clickable-row:hover td{background:var(--blue-pale)}
+.status-pill{display:inline-block;padding:2px 10px;border-radius:999px;font-size:13px;font-weight:700;white-space:nowrap}
+.status-pending{background:#fff4d6;color:#7a5510}
+.status-approved{background:#eefaf0;color:#1d6b34}
+.status-deposit_requested{background:#e8f1fd;color:#0B3D91}
+.status-active{background:#e2f5e9;color:#14532a}
+.status-rejected{background:#fdf0f0;color:#8f1d1d}
+.pager{display:flex;align-items:center;gap:14px;margin:16px 0;justify-content:center}
+.pager button:disabled{opacity:.45;cursor:default}
+.admin-error{color:#8f1d1d;background:#fdf0f0;border:1px solid #f0b6b6;border-radius:8px;padding:10px 14px}
+.admin-ok{color:#1d6b34;background:#eefaf0;border:1px solid #bfe3c6;border-radius:8px;padding:10px 14px}
+.detail-grid{display:grid;grid-template-columns:200px 1fr;gap:8px 16px;border:1px solid var(--line);border-radius:var(--radius);padding:20px;margin:16px 0}
+.detail-grid dt{font-weight:700;color:var(--blue);margin:0}
+.detail-grid dd{margin:0;word-break:break-word}
+#detail-photo{max-width:480px;border:1px solid var(--line);border-radius:8px}
+.timeline{list-style:none;margin:0 0 20px;padding:0}
+.timeline li{padding:10px 0 10px 22px;border-left:3px solid var(--blue-light);margin-left:6px;position:relative}
+.timeline li::before{content:"";position:absolute;left:-7px;top:16px;width:11px;height:11px;border-radius:50%;background:var(--blue)}
+.detail-actions{display:flex;gap:10px;flex-wrap:wrap;margin:16px 0}
+.btn-danger{background:#8f1d1d;color:#fff}
+.btn-danger:hover{background:#a82a2a}
+@media(max-width:640px){.detail-grid{grid-template-columns:1fr}}

@@ -1,4 +1,4 @@
-/* Industrial Commercial Bank — shared UI behaviour (Phase 1, frontend only) */
+/* Industrial Commercial Bank — shared UI behaviour */
 document.addEventListener('DOMContentLoaded', function () {
   // Mobile nav toggle
   var toggle = document.querySelector('.nav-toggle');
@@ -17,27 +17,26 @@ document.addEventListener('DOMContentLoaded', function () {
   });
 
   // Frontend-only forms: show a local confirmation state, send nothing anywhere.
+  // (The account application form now submits to the backend; see js/open-account.js.)
   document.querySelectorAll('form[data-local-confirm]').forEach(function (form) {
     form.addEventListener('submit', function (e) {
       e.preventDefault();
       var target = document.getElementById(form.getAttribute('data-local-confirm'));
       if (target) {
-        var ref = document.querySelector('[data-demo-ref]', target);
-        if (ref) ref.textContent = 'ICB-DEMO-' + Math.random().toString(36).slice(2, 8).toUpperCase();
         target.classList.add('show');
         target.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
     });
   });
 
-  // ID upload field: show chosen file name only (no upload in Phase 1)
+  // ID upload field: show chosen file name
   var idInput = document.getElementById('id-photo');
   var idName = document.getElementById('id-photo-name');
   function renderIdNote() {
     if (!idInput || !idName) return;
     var d = window.__icbDict || {};
     var pre = d.open_file_prefix !== undefined ? d.open_file_prefix : 'Sélectionné : ';
-    var suf = d.open_file_suffix !== undefined ? d.open_file_suffix : " (non téléversé — l'envoi sécurisé arrive avec la Phase 2)";
+    var suf = d.open_file_suffix !== undefined ? d.open_file_suffix : '';
     idName.textContent = idInput.files.length ? pre + idInput.files[0].name + suf : '';
   }
   if (idInput && idName) {
