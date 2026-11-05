@@ -1,17 +1,14 @@
-// GET /api/admin-transfers — list transfer requests for the staff dashboard.
-// Authorization: Bearer <token> (see _auth.js).
-// Query filters: status (pending|approved|rejected), region
-// (africa|europe|america|asia), search (sender name, reference or destination
-// bank), sort (created_at|reference|amount), order (asc|desc), page, per_page
-// (default 20, max 100). Returns the filtered page plus overview stats and
-// page counts. Each row also carries client_approved (true once the client
-// confirmed the request in their portal) and is_manual_bank (true when the
-// client typed the bank themselves because it was not listed); both read as
-// false until the 2026-11-05 client-portal migration has run (see
-// sql/migrations/2026-11-05-client-portal.sql). Required environment
-// variable: DATABASE_URL.
+// Merged transfer-request endpoints for the staff dashboard.
+// Serves (via vercel.json rewrites, op query parameter):
+//   /api/admin-transfers              list transfer requests (default)
+//   /api/admin-transfer-review?op=review  decide on a transfer request
+// Authorization: Bearer <token> (see _auth.js). The transfer
+// itself is processed offline by the bank; no money ever moves
+// through this site. Required environment variable: DATABASE_URL.
+// Optional email: see _mail.js.
 const { getPool } = require('./_db');
 const { requireAdmin } = require('./_auth');
+const { notifyTransferDecision } = require('./_mail');
 
 const LIST_COLUMNS =
   'id, reference, sender_name, sender_email, sender_phone, account_number, ' +
@@ -58,7 +55,9 @@ function clean(value) {
   return typeof value === 'string' ? value.trim() : '';
 }
 
-module.exports = async function handler(req, res) {
+const DECISIONS = ['approved', 'rejected'];
+
+async function handleTransfersList(req, res) {
   if (req.method !== 'GET') {
     res.setHeader('Allow', 'GET');
     return res.status(405).json({ ok: false, error: 'method_not_allowed' });
@@ -132,4 +131,82 @@ module.exports = async function handler(req, res) {
   } catch (e) {
     return res.status(500).json({ ok: false, error: 'server_error' });
   }
+}
+
+async function handleTransferReview(req, res) {
+  if (req.method !== 'POST') {
+    res.setHeader('Allow', 'POST');
+    return res.status(405).json({ ok: false, error: 'method_not_allowed' });
+  }
+  if (!requireAdmin(req, res)) return;
+
+  const body = req.body || {};
+  const id = parseInt(body.id, 10);
+  const decision = typeof body.decision === 'string' ? body.decision.trim() : '';
+  const note = typeof body.note === 'string' ? body.note.trim().slice(0, 1000) : '';
+  if (!id || DECISIONS.indexOf(decision) === -1) {
+    return res.status(400).json({ ok: false, error: 'invalid_fields' });
+  }
+
+  let pool;
+  try {
+    pool = getPool();
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: 'server_error' });
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const current = await client.query(
+      'SELECT id, reference, sender_name, sender_email, destination_bank, ' +
+        'destination_country, amount, currency, status FROM transfer_requests WHERE id = $1 FOR UPDATE',
+      [id]
+    );
+    if (current.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ ok: false, error: 'not_found' });
+    }
+    const row = current.rows[0];
+    if (row.status !== 'pending') {
+      await client.query('ROLLBACK');
+      return res.status(409).json({ ok: false, error: 'invalid_transition' });
+    }
+    await client.query(
+      'UPDATE transfer_requests SET status = $1, admin_note = $2, reviewed_at = now() WHERE id = $3',
+      [decision, note || null, id]
+    );
+    await client.query('COMMIT');
+
+    let emailSent = false;
+    try {
+      emailSent = await notifyTransferDecision(
+        {
+          reference: row.reference,
+          sender_name: row.sender_name,
+          sender_email: row.sender_email,
+          destination_bank: row.destination_bank,
+          destination_country: row.destination_country,
+          amount: row.amount,
+          currency: row.currency
+        },
+        decision,
+        note
+      );
+    } catch (e) {
+      emailSent = false;
+    }
+    return res.status(200).json({ ok: true, status: decision, email_sent: emailSent });
+  } catch (e) {
+    try { await client.query('ROLLBACK'); } catch (ignored) {}
+    return res.status(500).json({ ok: false, error: 'server_error' });
+  } finally {
+    client.release();
+  }
+}
+
+module.exports = async function handler(req, res) {
+  const op = req.query && typeof req.query.op === 'string' ? req.query.op : '';
+  if (op === 'review') return handleTransferReview(req, res);
+  return handleTransfersList(req, res);
 };

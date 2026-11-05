@@ -1,32 +1,17 @@
-// GET /api/admin-accounts — list client accounts for the staff dashboard.
-// POST /api/admin-accounts — create an account for an approved/active
-// application that does not have one yet.
-// RECORD-KEEPING ONLY: this site is not real banking and no money ever moves
-// through it. Balances shown here are records of deposits and withdrawals
-// that happened at the bank itself (branch or counter); staff record them
-// here so the dashboard shows what each client account holds.
-// Authorization: Bearer <token> (see _auth.js).
-// GET query filters: search (client name, account number or application
-// reference), status (active|on_hold), sort (created_at|balance|
-// account_number), order (asc|desc), page, per_page (default 20, max 100).
-// Returns the filtered page plus totals: total accounts, accounts on hold,
-// and the summed balance per currency. Balances are NUMERIC strings.
-// POST body (JSON): { reference, opening_balance, currency }.
-//   reference: the application reference (ICB-YYYY-XXXXXX) — required.
-//   opening_balance: optional, defaults to 0; a positive opening balance is
-//     recorded as the first deposit transaction, exactly as the deposit
-//     confirmation in admin-review.js does. This records a deposit that
-//     already happened at the bank; it never moves money.
-//   currency: optional, defaults to XAF.
-//   The application must be approved or active and must not already have an
-//   account (409 account_exists / 409 not_eligible). A new unique 10-digit
-//   account number starting with '1' is allocated, and an 'account_created'
-//   history event is recorded. Returns the new account number and balance.
-// Required environment variable: DATABASE_URL.
+// Merged account endpoints for the staff dashboard.
+// Serves (via vercel.json rewrites, op query parameter):
+//   /api/admin-accounts               list accounts (GET) / create one (POST)
+//   /api/admin-account?op=detail      one account (GET) / delete it (DELETE)
+//   /api/admin-transaction?op=transaction  record a deposit or withdrawal
+//   /api/admin-hold?op=hold           put an account on hold / release it
+// RECORD-KEEPING ONLY: this site is not real banking and no money
+// ever moves through it. Authorization: Bearer <token> (see
+// _auth.js). Required environment variable: DATABASE_URL.
 const crypto = require('crypto');
 const { getPool } = require('./_db');
 const { requireAdmin } = require('./_auth');
 const { validCurrency } = require('./_money');
+const { validAmount } = require('./_money');
 
 const LIST_COLUMNS =
   'a.id, a.application_id, a.account_number, a.currency, a.balance, a.status, ' +
@@ -223,7 +208,113 @@ async function handlePost(req, res) {
   }
 }
 
-module.exports = async function handler(req, res) {
+async function handleAccountGet(req, res) {
+  const q = req.query || {};
+  const id = parseInt(q.id, 10);
+  const applicationId = parseInt(q.application_id, 10);
+  if (!id && !applicationId) {
+    return res.status(400).json({ ok: false, error: 'invalid_id' });
+  }
+
+  let pool;
+  try {
+    pool = getPool();
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: 'server_error' });
+  }
+
+  try {
+    const result = await pool.query(
+      'SELECT a.id, a.application_id, a.account_number, a.currency, a.balance, ' +
+        'a.status, a.created_at, a.updated_at, ap.reference, ap.first_name, ' +
+        'ap.last_name, ap.email, ap.phone, ap.account_type, ap.status AS application_status ' +
+        'FROM accounts a JOIN applications ap ON ap.id = a.application_id ' +
+        'WHERE ' + (id ? 'a.id = $1' : 'a.application_id = $1'),
+      [id || applicationId]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ ok: false, error: 'not_found' });
+    }
+    const row = result.rows[0];
+    const txResult = await pool.query(
+      'SELECT id, type, amount, note, created_at FROM transactions ' +
+        'WHERE account_id = $1 ORDER BY created_at DESC, id DESC',
+      [row.id]
+    );
+    const account = {
+      id: row.id,
+      application_id: row.application_id,
+      account_number: row.account_number,
+      currency: row.currency,
+      balance: row.balance,
+      status: row.status,
+      created_at: row.created_at,
+      updated_at: row.updated_at,
+      reference: row.reference,
+      first_name: row.first_name,
+      last_name: row.last_name,
+      email: row.email,
+      phone: row.phone,
+      account_type: row.account_type,
+      application_status: row.application_status
+    };
+    return res.status(200).json({ ok: true, account, transactions: txResult.rows });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: 'server_error' });
+  }
+}
+
+async function handleAccountDelete(req, res) {
+  const q = req.query || {};
+  const id = parseInt(q.id, 10);
+  if (!id) {
+    return res.status(400).json({ ok: false, error: 'invalid_id' });
+  }
+
+  let pool;
+  try {
+    pool = getPool();
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: 'server_error' });
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const found = await client.query(
+      'SELECT id, application_id, account_number, balance, status FROM accounts WHERE id = $1 FOR UPDATE',
+      [id]
+    );
+    if (found.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ ok: false, error: 'not_found' });
+    }
+    const account = found.rows[0];
+    if (account.status === 'on_hold') {
+      await client.query('ROLLBACK');
+      return res.status(409).json({ ok: false, error: 'account_on_hold' });
+    }
+    if (Number(account.balance) !== 0) {
+      await client.query('ROLLBACK');
+      return res.status(409).json({ ok: false, error: 'nonzero_balance' });
+    }
+    await client.query('DELETE FROM transactions WHERE account_id = $1', [id]);
+    await client.query('DELETE FROM accounts WHERE id = $1', [id]);
+    await client.query(
+      'INSERT INTO application_events (application_id, action, note) VALUES ($1, $2, $3)',
+      [account.application_id, 'account_deleted', 'Account ' + account.account_number + ' deleted by staff']
+    );
+    await client.query('COMMIT');
+    return res.status(200).json({ ok: true });
+  } catch (e) {
+    try { await client.query('ROLLBACK'); } catch (ignored) {}
+    return res.status(500).json({ ok: false, error: 'server_error' });
+  } finally {
+    client.release();
+  }
+}
+
+async function handleAccounts(req, res) {
   if (req.method !== 'GET' && req.method !== 'POST') {
     res.setHeader('Allow', 'GET, POST');
     return res.status(405).json({ ok: false, error: 'method_not_allowed' });
@@ -231,4 +322,153 @@ module.exports = async function handler(req, res) {
   if (!requireAdmin(req, res)) return;
   if (req.method === 'GET') return handleGet(req, res);
   return handlePost(req, res);
+}
+
+async function handleAccountDetail(req, res) {
+  if (req.method !== 'GET' && req.method !== 'DELETE') {
+    res.setHeader('Allow', 'GET, DELETE');
+    return res.status(405).json({ ok: false, error: 'method_not_allowed' });
+  }
+  if (!requireAdmin(req, res)) return;
+  if (req.method === 'GET') return handleAccountGet(req, res);
+  return handleAccountDelete(req, res);
+}
+
+async function handleTransaction(req, res) {
+  if (req.method !== 'POST') {
+    res.setHeader('Allow', 'POST');
+    return res.status(405).json({ ok: false, error: 'method_not_allowed' });
+  }
+  if (!requireAdmin(req, res)) return;
+
+  const body = req.body || {};
+  const accountId = parseInt(body.account_id, 10);
+  const type = typeof body.type === 'string' ? body.type.trim() : '';
+  const amount = validAmount(body.amount);
+  const note = typeof body.note === 'string' ? body.note.trim().slice(0, 1000) : '';
+  if (!accountId || (type !== 'deposit' && type !== 'withdrawal') || !amount) {
+    return res.status(400).json({ ok: false, error: 'invalid_fields' });
+  }
+
+  let pool;
+  try {
+    pool = getPool();
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: 'server_error' });
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const accountResult = await client.query(
+      'SELECT id, application_id, currency, balance, status FROM accounts WHERE id = $1 FOR UPDATE',
+      [accountId]
+    );
+    if (accountResult.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ ok: false, error: 'not_found' });
+    }
+    const account = accountResult.rows[0];
+    if (account.status !== 'active') {
+      await client.query('ROLLBACK');
+      return res.status(409).json({ ok: false, error: 'account_on_hold' });
+    }
+    if (type === 'withdrawal' && parseFloat(account.balance) < parseFloat(amount)) {
+      await client.query('ROLLBACK');
+      return res.status(409).json({ ok: false, error: 'insufficient_balance' });
+    }
+    await client.query(
+      'INSERT INTO transactions (account_id, type, amount, note) VALUES ($1, $2, $3, $4)',
+      [accountId, type, amount, note || null]
+    );
+    const updated = await client.query(
+      type === 'deposit'
+        ? 'UPDATE accounts SET balance = balance + $2, updated_at = now() WHERE id = $1 RETURNING balance, currency'
+        : 'UPDATE accounts SET balance = balance - $2, updated_at = now() WHERE id = $1 RETURNING balance, currency',
+      [accountId, amount]
+    );
+    const eventAction = type === 'deposit' ? 'deposit_recorded' : 'withdrawal_recorded';
+    const eventNote = amount + ' ' + account.currency + (note ? ' — ' + note : '');
+    await client.query(
+      'INSERT INTO application_events (application_id, action, note) VALUES ($1, $2, $3)',
+      [account.application_id, eventAction, eventNote]
+    );
+    await client.query('COMMIT');
+    return res.status(200).json({
+      ok: true,
+      balance: updated.rows[0].balance,
+      currency: updated.rows[0].currency
+    });
+  } catch (e) {
+    try { await client.query('ROLLBACK'); } catch (ignored) {}
+    return res.status(500).json({ ok: false, error: 'server_error' });
+  } finally {
+    client.release();
+  }
+}
+
+async function handleHold(req, res) {
+  if (req.method !== 'POST') {
+    res.setHeader('Allow', 'POST');
+    return res.status(405).json({ ok: false, error: 'method_not_allowed' });
+  }
+  if (!requireAdmin(req, res)) return;
+
+  const body = req.body || {};
+  const accountId = parseInt(body.account_id, 10);
+  const action = typeof body.action === 'string' ? body.action.trim() : '';
+  const note = typeof body.note === 'string' ? body.note.trim().slice(0, 1000) : '';
+  if (!accountId || (action !== 'hold' && action !== 'release')) {
+    return res.status(400).json({ ok: false, error: 'invalid_fields' });
+  }
+
+  let pool;
+  try {
+    pool = getPool();
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: 'server_error' });
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const accountResult = await client.query(
+      'SELECT id, application_id, status FROM accounts WHERE id = $1 FOR UPDATE',
+      [accountId]
+    );
+    if (accountResult.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ ok: false, error: 'not_found' });
+    }
+    const account = accountResult.rows[0];
+    const newStatus = action === 'hold' ? 'on_hold' : 'active';
+    if (account.status === newStatus) {
+      await client.query('ROLLBACK');
+      return res.status(409).json({ ok: false, error: 'invalid_transition' });
+    }
+    await client.query(
+      'UPDATE accounts SET status = $1, updated_at = now() WHERE id = $2',
+      [newStatus, accountId]
+    );
+    const eventAction = action === 'hold' ? 'account_hold' : 'account_released';
+    await client.query(
+      'INSERT INTO application_events (application_id, action, note) VALUES ($1, $2, $3)',
+      [account.application_id, eventAction, note || null]
+    );
+    await client.query('COMMIT');
+    return res.status(200).json({ ok: true, status: newStatus });
+  } catch (e) {
+    try { await client.query('ROLLBACK'); } catch (ignored) {}
+    return res.status(500).json({ ok: false, error: 'server_error' });
+  } finally {
+    client.release();
+  }
+}
+
+module.exports = async function handler(req, res) {
+  const op = req.query && typeof req.query.op === 'string' ? req.query.op : '';
+  if (op === 'detail') return handleAccountDetail(req, res);
+  if (op === 'transaction') return handleTransaction(req, res);
+  if (op === 'hold') return handleHold(req, res);
+  return handleAccounts(req, res);
 };

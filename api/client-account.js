@@ -1,20 +1,23 @@
-// GET /api/client-account — the signed-in customer's own account view.
-// Authorization: Bearer <client token> (see _auth.js — 2-hour token issued
-// by /api/client-login). The token names exactly one account, and this
-// endpoint returns ONLY that account: its balance and status, its own
-// transactions, and its own transfer requests. No other account's data can
-// be reached through it, whatever id is passed in the query.
-// RECORD-KEEPING ONLY: this site is not real banking and no money ever
-// moves through it. The balance shown here is the record of deposits and
-// withdrawals that happened at the bank itself.
-// The client_approved / is_manual_bank transfer flags arrive with the
-// 2026-11-05 client-portal migration (sql/migrations/2026-11-05-client-portal.sql);
-// until it has run they read as false and the endpoint still works.
-// Required environment variables: DATABASE_URL, ADMIN_SECRET.
+// Merged customer-portal endpoints.
+// Serves (via vercel.json rewrites, op query parameter):
+//   /api/client-account               the signed-in customer's account view (default)
+//   /api/client-login?op=login        sign a customer in (account number +
+//                                     application reference + email, no password)
+//   /api/client-transfer-approve?op=approve  a customer confirms one of their
+//                                     own pending transfer requests
+// Authorization: Bearer <client token> (see _auth.js — 2-hour token
+// issued by /api/client-login). RECORD-KEEPING ONLY: no money ever
+// moves through this site. Required environment variables:
+// DATABASE_URL, ADMIN_SECRET.
 const { getPool } = require('./_db');
 const { clientAccountId } = require('./_auth');
+const { issueClientToken } = require('./_auth');
 
-module.exports = async function handler(req, res) {
+function clean(value) {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+async function handleClientAccount(req, res) {
   if (req.method !== 'GET') {
     res.setHeader('Allow', 'GET');
     return res.status(405).json({ ok: false, error: 'method_not_allowed' });
@@ -90,4 +93,132 @@ module.exports = async function handler(req, res) {
   } catch (e) {
     return res.status(500).json({ ok: false, error: 'server_error' });
   }
+}
+
+async function handleClientLogin(req, res) {
+  if (req.method !== 'POST') {
+    res.setHeader('Allow', 'POST');
+    return res.status(405).json({ ok: false, error: 'method_not_allowed' });
+  }
+
+  const body = req.body || {};
+  const accountNumber = clean(body.account_number);
+  const reference = clean(body.reference).toUpperCase();
+  const email = clean(body.email).toLowerCase();
+  if (!accountNumber || !reference || !email) {
+    return res.status(400).json({ ok: false, error: 'invalid_fields' });
+  }
+
+  let pool;
+  try {
+    pool = getPool();
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: 'server_error' });
+  }
+
+  try {
+    const result = await pool.query(
+      'SELECT a.id FROM accounts a JOIN applications ap ON ap.id = a.application_id ' +
+        'WHERE a.account_number = $1 AND ap.reference = $2 AND lower(ap.email) = $3 ' +
+        "AND a.status = 'active'",
+      [accountNumber, reference, email]
+    );
+    if (result.rows.length === 0) {
+      return res.status(401).json({ ok: false, error: 'unauthorized' });
+    }
+    const token = issueClientToken(result.rows[0].id);
+    if (!token) {
+      return res.status(500).json({ ok: false, error: 'server_error' });
+    }
+    return res.status(200).json({ ok: true, token: token });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: 'server_error' });
+  }
+}
+
+async function handleClientApprove(req, res) {
+  if (req.method !== 'POST') {
+    res.setHeader('Allow', 'POST');
+    return res.status(405).json({ ok: false, error: 'method_not_allowed' });
+  }
+  const accountId = clientAccountId(req);
+  if (!accountId) {
+    return res.status(401).json({ ok: false, error: 'unauthorized' });
+  }
+
+  const body = req.body || {};
+  const id = parseInt(body.id, 10);
+  if (!id) {
+    return res.status(400).json({ ok: false, error: 'invalid_fields' });
+  }
+
+  let pool;
+  try {
+    pool = getPool();
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: 'server_error' });
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const accountResult = await client.query(
+      'SELECT account_number FROM accounts WHERE id = $1',
+      [accountId]
+    );
+    if (accountResult.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(401).json({ ok: false, error: 'unauthorized' });
+    }
+    const accountNumber = accountResult.rows[0].account_number;
+    const found = await client.query(
+      'SELECT id, status, client_approved FROM transfer_requests ' +
+        'WHERE id = $1 AND account_number = $2 FOR UPDATE',
+      [id, accountNumber]
+    ).catch(function (e) {
+      // 42703 = undefined column: the client-portal migration has not run yet.
+      if (e && e.code === '42703') {
+        const missing = new Error('missing column client_approved');
+        missing.code = 'MIGRATION_REQUIRED';
+        throw missing;
+      }
+      throw e;
+    });
+    if (found.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ ok: false, error: 'not_found' });
+    }
+    const request = found.rows[0];
+    if (request.status !== 'pending') {
+      await client.query('ROLLBACK');
+      return res.status(409).json({ ok: false, error: 'invalid_transition' });
+    }
+    if (!request.client_approved) {
+      await client.query(
+        'UPDATE transfer_requests SET client_approved = true WHERE id = $1',
+        [id]
+      );
+    }
+    await client.query('COMMIT');
+    return res.status(200).json({ ok: true, client_approved: true });
+  } catch (e) {
+    try { await client.query('ROLLBACK'); } catch (ignored) {}
+    if (e && e.code === 'MIGRATION_REQUIRED') {
+      return res.status(500).json({
+        ok: false,
+        error: 'migration_required',
+        message: 'The client_approved column is missing: run sql/migrations/2026-11-05-client-portal.sql in the Neon SQL editor first.'
+      });
+    }
+    return res.status(500).json({ ok: false, error: 'server_error' });
+  } finally {
+    client.release();
+  }
+}
+
+module.exports = async function handler(req, res) {
+  const op = req.query && typeof req.query.op === 'string' ? req.query.op : '';
+  if (op === 'login') return handleClientLogin(req, res);
+  if (op === 'approve') return handleClientApprove(req, res);
+  return handleClientAccount(req, res);
 };
