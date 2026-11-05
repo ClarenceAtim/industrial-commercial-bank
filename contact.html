@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Industrial Commercial Bank — Contact</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<header class="site-header">
+  <div class="header-inner">
+    <a class="brand" href="index.html"><img src="images/logo.svg" alt="Logo Industrial Commercial Bank"><span>Industrial Commercial Bank<small data-i18n="brand_tag">Une banque bâtie sur des fondations solides</small></span></a>
+    <button class="nav-toggle" aria-label="Menu">☰</button>
+    <nav class="main-nav">
+      <a href="index.html" data-i18n="nav_home">Accueil</a>
+      <a href="personal.html" data-i18n="nav_personal">Particuliers</a>
+      <a href="business.html" data-i18n="nav_business">Entreprises</a>
+      <a href="loans.html" data-i18n="nav_loans">Prêts</a>
+      <a href="digital.html" data-i18n="nav_digital">Banque digitale</a>
+      <a href="rates.html" data-i18n="nav_rates">Taux et frais</a>
+      <a href="branches.html" data-i18n="nav_branches">Agences et GAB</a>
+      <a href="contact.html" class="active" data-i18n="nav_contact">Contact</a>
+      <a href="faq.html" data-i18n="nav_faq">FAQ</a>
+    </nav>
+    <div class="lang-switch"><button data-lang="fr" class="active">FR</button><button data-lang="en">EN</button></div>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="container">
+    <h1 data-i18n="con_hero_title">Contactez-nous</h1>
+    <p data-i18n="con_hero_sub">Une question ? Écrivez-nous, notre équipe vous répondra.</p>
+    
+  </div>
+</section>
+
+<section class="section">
+  <div class="container">
+    <div class="grid">
+      <div class="card"><h3>Téléphone</h3><p><span class="placeholder">[Phone to be added]</span></p></div>
+      <div class="card"><h3>E-mail</h3><p><span class="placeholder">[Email to be added]</span></p></div>
+      <div class="card"><h3>Adresse</h3><p><span class="placeholder">[Address to be added]</span></p></div>
+    </div>
+    <h2 style="margin-top:40px" data-i18n="con_form_title">Formulaire de contact</h2>
+    <form data-local-confirm="contact-result">
+      <div class="field"><label data-i18n="con_name">Nom complet</label><input type="text" name="name" required></div>
+      <div class="field"><label data-i18n="con_email">Adresse e-mail</label><input type="email" name="email" required></div>
+      <div class="field"><label data-i18n="con_subject">Sujet</label><input type="text" name="subject" required></div>
+      <div class="field"><label data-i18n="con_message">Votre message</label><textarea name="message" rows="5" required></textarea></div>
+      <button class="btn" type="submit" data-i18n="con_send">Envoyer le message</button>
+    </form>
+    <div class="form-result" id="contact-result"><strong data-i18n="con_success">Merci ! Votre message a bien été pris en compte (formulaire de démonstration — l'envoi réel arrive avec la Phase 2).</strong></div>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="footer-inner">
+    <div><h4>Industrial Commercial Bank</h4><p data-i18n="footer_about">Industrial Commercial Bank propose des services bancaires simples et fiables pour les particuliers et les entreprises.</p></div>
+    <div><h4 data-i18n="footer_links_title">Liens rapides</h4><ul>
+      <li><a href="personal.html" data-i18n="nav_personal">Particuliers</a></li>
+      <li><a href="business.html" data-i18n="nav_business">Entreprises</a></li>
+      <li><a href="loans.html" data-i18n="nav_loans">Prêts</a></li>
+      <li><a href="rates.html" data-i18n="nav_rates">Taux et frais</a></li>
+      <li><a href="branches.html" data-i18n="nav_branches">Agences et GAB</a></li>
+    </ul></div>
+    <div><h4 data-i18n="footer_contact_title">Contact</h4><ul>
+      <li>Tél : <span class="placeholder">[Phone to be added]</span></li>
+      <li>E-mail : <span class="placeholder">[Email to be added]</span></li>
+      <li>Adresse : <span class="placeholder">[Address to be added]</span></li>
+    </ul></div>
+    <div><h4 data-i18n="footer_legal_title">Mentions légales</h4><ul>
+      <li><a href="legal.html">Confidentialité et conditions</a></li>
+      <li><a href="faq.html" data-i18n="nav_faq">FAQ</a></li>
+      <li><a href="contact.html" data-i18n="nav_contact">Contact</a></li>
+    </ul></div>
+  </div>
+  <div class="footer-bottom"><span data-i18n="footer_rights">© Industrial Commercial Bank. Tous droits réservés. Site vitrine — Phase 1.</span></div>
+</footer>
+<!-- WhatsApp button: number to be added — links to contact page until then -->
+<a class="wa-btn" href="contact.html" title="WhatsApp number to be added" aria-label="WhatsApp (number to be added)">💬</a>
+<script src="js/main.js"></script>
+<script src="js/translator.js"></script>
+</body>
+</html>

@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-label="Industrial Commercial Bank logo">
+  <title>Industrial Commercial Bank — three interlocking coins</title>
+  <!-- Three interlocking coin rings: stability and building foundations -->
+  <circle cx="48" cy="30" r="19" fill="none" stroke="#0B3D91" stroke-width="8"/>
+  <circle cx="30" cy="62" r="19" fill="none" stroke="#1E6FB8" stroke-width="8"/>
+  <circle cx="66" cy="62" r="19" fill="none" stroke="#5B9BD5" stroke-width="8"/>
+  <!-- Foundation bar -->
+  <rect x="22" y="84" width="52" height="5" rx="2.5" fill="#0B3D91"/>
+</svg>
