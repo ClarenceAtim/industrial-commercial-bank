@@ -1,7 +1,7 @@
 /* Industrial Commercial Bank — staff dashboard (admin.html) */
 (function () {
   var TOKEN_KEY = 'icb-admin-token';
-  var state = { page: 1, sort: 'created_at', order: 'desc', detailId: null, deleteArmed: false };
+  var state = { view: 'applications', page: 1, sort: 'created_at', order: 'desc', detailId: null, deleteArmed: false, acctPage: 1, acctSort: 'created_at', acctOrder: 'desc', acctDetailId: null, acctHoldArmed: false, trfPage: 1, trfSort: 'created_at', trfOrder: 'desc', trfDetailId: null };
 
   function t(key, fallback) {
     var d = window.__icbDict || {};
@@ -34,6 +34,20 @@
       });
     } catch (e) { return String(value); }
   }
+  function formatMoney(value, currency) {
+    if (value === null || value === undefined || value === '') return '—';
+    var amount = Number(value);
+    if (!Number.isFinite(amount)) return String(value);
+    try {
+      return amount.toLocaleString(window.__icbLang || 'fr', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ' + (currency || '');
+    } catch (e) { return amount.toFixed(2) + ' ' + (currency || ''); }
+  }
+  function acctStatusLabel(status) {
+    return {
+      active: t('admin_status_active', 'Actif'),
+      on_hold: t('admin_acct_status_hold', 'Bloqué')
+    }[status] || status;
+  }
   function statusLabel(status) {
     return {
       pending: t('admin_status_pending', 'En attente'),
@@ -64,6 +78,10 @@
       rejected: t('admin_event_rejected', 'Refusée'),
       deposit_requested: t('admin_event_deposit_requested', 'Dépôt demandé'),
       deposit_received: t('admin_event_deposit_received', 'Dépôt reçu — compte actif'),
+      deposit_recorded: t('admin_event_deposit_recorded', 'Dépôt enregistré'),
+      withdrawal_recorded: t('admin_event_withdrawal_recorded', 'Retrait enregistré'),
+      account_hold: t('admin_event_account_hold', 'Compte bloqué'),
+      account_released: t('admin_event_account_released', 'Compte débloqué'),
       reopened: t('admin_event_reopened', 'Rouverte')
     }[action] || action;
   }
@@ -151,6 +169,8 @@
     state.deleteArmed = false;
     show($('detail-error'), false);
     show($('detail-ok'), false);
+    $('deposit-amount').value = '';
+    $('deposit-currency').value = 'XAF';
     fetch('/api/admin-application?id=' + id, { headers: { 'Authorization': 'Bearer ' + token() } })
       .then(function (r) {
         if (r.status === 401) { authFailed(); throw new Error('auth'); }
@@ -233,6 +253,7 @@
         }
         $('detail-note').value = app.admin_note || '';
         renderActions(app.status);
+        loadDetailAccount(app);
         show($('admin-detail'), true);
         $('admin-detail').scrollIntoView({ behavior: 'smooth', block: 'start' });
       })
@@ -244,9 +265,32 @@
       });
   }
 
+  function loadDetailAccount(app) {
+    var box = $('detail-account');
+    show(box, false);
+    if (app.status !== 'active') return;
+    fetch('/api/admin-account?application_id=' + app.id, { headers: { 'Authorization': 'Bearer ' + token() } })
+      .then(function (r) {
+        if (!r.ok) throw new Error('load');
+        return r.json();
+      })
+      .then(function (data) {
+        if (!data.ok) return;
+        $('detail-account-number').textContent = data.account.account_number;
+        $('detail-account-balance').textContent = formatMoney(data.account.balance, data.account.currency);
+        $('detail-view-account').onclick = function () {
+          switchView('accounts');
+          openAcctDetail(data.account.id);
+        };
+        show(box, true);
+      })
+      .catch(function () { /* no account yet: leave the box hidden */ });
+  }
+
   function renderActions(status) {
     var box = $('detail-actions');
     box.innerHTML = '';
+    show($('deposit-fields'), status === 'deposit_requested');
     function button(label, cls, fn) {
       var b = document.createElement('button');
       b.type = 'button';
@@ -277,10 +321,23 @@
   function review(decision) {
     show($('detail-error'), false);
     show($('detail-ok'), false);
+    var payload = { id: state.detailId, decision: decision, note: $('detail-note').value.trim() };
+    if (decision === 'deposit_received') {
+      var amount = parseFloat($('deposit-amount').value);
+      var currency = ($('deposit-currency').value || 'XAF').trim().toUpperCase();
+      if (!Number.isFinite(amount) || amount <= 0) {
+        var err = $('detail-error');
+        err.textContent = t('admin_deposit_amount_required', 'Indiquez le montant du dépôt reçu.');
+        show(err, true);
+        return;
+      }
+      payload.amount = amount;
+      payload.currency = currency || 'XAF';
+    }
     fetch('/api/admin-review', {
       method: 'POST',
       headers: headers(),
-      body: JSON.stringify({ id: state.detailId, decision: decision, note: $('detail-note').value.trim() })
+      body: JSON.stringify(payload)
     })
       .then(function (r) {
         if (r.status === 401) { authFailed(); throw new Error('auth'); }
@@ -377,6 +434,427 @@
       });
   }
 
+  function switchView(view) {
+    state.view = view;
+    $('tab-applications').classList.toggle('active', view === 'applications');
+    $('tab-accounts').classList.toggle('active', view === 'accounts');
+    $('tab-transfers').classList.toggle('active', view === 'transfers');
+    show($('view-applications'), view === 'applications');
+    show($('view-accounts'), view === 'accounts');
+    show($('view-transfers'), view === 'transfers');
+    if (view === 'applications') loadList();
+    else if (view === 'accounts') loadAccounts();
+    else loadTransfers();
+  }
+
+  function acctCurrentFilters() {
+    return {
+      search: $('acct-search').value.trim(),
+      status: $('acct-filter-status').value,
+      sort: state.acctSort,
+      order: state.acctOrder,
+      page: state.acctPage
+    };
+  }
+
+  function loadAccounts() {
+    var f = acctCurrentFilters();
+    var params = new URLSearchParams();
+    Object.keys(f).forEach(function (k) { if (f[k] !== '' && f[k] !== null) params.set(k, f[k]); });
+    show($('acct-loading'), true);
+    show($('acct-load-error'), false);
+    fetch('/api/admin-accounts?' + params.toString(), { headers: { 'Authorization': 'Bearer ' + token() } })
+      .then(function (r) {
+        if (r.status === 401) { authFailed(); throw new Error('auth'); }
+        if (!r.ok) throw new Error('load');
+        return r.json();
+      })
+      .then(function (data) {
+        show($('acct-loading'), false);
+        if (!data.ok) throw new Error('load');
+        var stats = data.stats || {};
+        $('acct-stat-total').textContent = stats.total != null ? stats.total : '—';
+        $('acct-stat-hold').textContent = stats.on_hold != null ? stats.on_hold : '—';
+        var balances = (stats.balances || []).map(function (b) {
+          return formatMoney(b.total, b.currency);
+        });
+        $('acct-stat-balance').textContent = balances.length ? balances.join(' · ') : '—';
+        var rows = data.accounts || [];
+        var tbody = $('acct-rows');
+        tbody.innerHTML = '';
+        rows.forEach(function (acct) {
+          var tr = document.createElement('tr');
+          tr.className = 'clickable-row';
+          tr.innerHTML =
+            '<td data-label="' + escapeHtml(t('admin_acct_col_number', 'Numéro de compte')) + '">' + escapeHtml(acct.account_number) + '</td>' +
+            '<td data-label="' + escapeHtml(t('admin_acct_col_client', 'Client')) + '">' + escapeHtml(acct.last_name + ' ' + acct.first_name) + '</td>' +
+            '<td data-label="' + escapeHtml(t('admin_acct_col_balance', 'Solde')) + '">' + escapeHtml(formatMoney(acct.balance, acct.currency)) + '</td>' +
+            '<td data-label="' + escapeHtml(t('admin_col_status', 'Statut')) + '"><span class="status-pill status-' + escapeHtml(acct.status) + '">' + escapeHtml(acctStatusLabel(acct.status)) + '</span></td>' +
+            '<td data-label="' + escapeHtml(t('admin_col_date', 'Date')) + '">' + escapeHtml(formatDate(acct.created_at)) + '</td>';
+          tr.addEventListener('click', function () { openAcctDetail(acct.id); });
+          tbody.appendChild(tr);
+        });
+        show($('acct-table'), rows.length > 0);
+        show($('acct-empty'), rows.length === 0);
+        show($('acct-pager'), data.total_pages > 1);
+        $('acct-page-label').textContent = data.page + ' ' + t('admin_page_of', 'sur') + ' ' + data.total_pages;
+        $('acct-prev').disabled = data.page <= 1;
+        $('acct-next').disabled = data.page >= data.total_pages;
+        document.querySelectorAll('.acct-sort-btn').forEach(function (btn) {
+          btn.dataset.dir = (btn.dataset.sort === state.acctSort) ? state.acctOrder : '';
+        });
+      })
+      .catch(function (e) {
+        if (e.message === 'auth') return;
+        show($('acct-loading'), false);
+        var err = $('acct-load-error');
+        err.textContent = t('admin_acct_load_error', 'Impossible de charger les comptes.');
+        show(err, true);
+      });
+  }
+
+  function openAcctDetail(id) {
+    state.acctDetailId = id;
+    state.acctHoldArmed = false;
+    show($('acct-error'), false);
+    show($('acct-ok'), false);
+    fetch('/api/admin-account?id=' + id, { headers: { 'Authorization': 'Bearer ' + token() } })
+      .then(function (r) {
+        if (r.status === 401) { authFailed(); throw new Error('auth'); }
+        if (!r.ok) throw new Error('load');
+        return r.json();
+      })
+      .then(function (data) {
+        if (!data.ok) throw new Error('load');
+        var acct = data.account;
+        $('acct-ref').textContent = acct.account_number + ' — ' + acct.last_name + ' ' + acct.first_name;
+        var fields = [
+          [t('admin_acct_col_number', 'Numéro de compte'), acct.account_number],
+          [t('admin_acct_col_client', 'Client'), acct.last_name + ' ' + acct.first_name],
+          [t('open_email', 'Adresse e-mail'), acct.email],
+          [t('con_phone_title', 'Téléphone'), acct.phone],
+          [t('open_acct_type', 'Type de compte souhaité'), accountLabel(acct.account_type)],
+          [t('admin_col_ref', 'Référence'), acct.reference],
+          [t('admin_acct_col_balance', 'Solde'), formatMoney(acct.balance, acct.currency)],
+          [t('admin_deposit_currency_label', 'Devise'), acct.currency],
+          [t('admin_col_status', 'Statut'), acctStatusLabel(acct.status)],
+          [t('admin_acct_created_label', 'Compte créé le'), formatDate(acct.created_at)]
+        ];
+        var dl = $('acct-fields');
+        dl.innerHTML = '';
+        fields.forEach(function (pair) {
+          var dt = document.createElement('dt');
+          dt.textContent = pair[0];
+          var dd = document.createElement('dd');
+          dd.textContent = pair[1];
+          dl.appendChild(dt);
+          dl.appendChild(dd);
+        });
+        $('acct-view-application').onclick = function () {
+          switchView('applications');
+          openDetail(acct.application_id);
+        };
+        var txBody = $('acct-tx-rows');
+        txBody.innerHTML = '';
+        (data.transactions || []).forEach(function (tx) {
+          var tr = document.createElement('tr');
+          var sign = tx.type === 'deposit' ? '+' : '−';
+          tr.innerHTML =
+            '<td>' + escapeHtml(formatDate(tx.created_at)) + '</td>' +
+            '<td>' + escapeHtml(tx.type === 'deposit' ? t('admin_acct_tx_deposit', 'Dépôt') : t('admin_acct_tx_withdrawal', 'Retrait')) + '</td>' +
+            '<td>' + escapeHtml(sign + ' ' + formatMoney(tx.amount, acct.currency)) + '</td>' +
+            '<td>' + escapeHtml(tx.note || '—') + '</td>';
+          txBody.appendChild(tr);
+        });
+        show($('acct-tx-table'), (data.transactions || []).length > 0);
+        show($('acct-tx-empty'), (data.transactions || []).length === 0);
+        $('tx-amount').value = '';
+        $('tx-note').value = '';
+        renderAcctActions(acct.status);
+        show($('acct-detail'), true);
+        $('acct-detail').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      })
+      .catch(function (e) {
+        if (e.message === 'auth') return;
+        var err = $('acct-error');
+        err.textContent = t('admin_acct_load_error', 'Impossible de charger les comptes.');
+        show(err, true);
+      });
+  }
+
+  function renderAcctActions(status) {
+    var box = $('acct-actions');
+    box.innerHTML = '';
+    function button(label, cls, fn) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'btn ' + cls;
+      b.textContent = label;
+      b.addEventListener('click', fn);
+      box.appendChild(b);
+      return b;
+    }
+    if (status === 'active') {
+      var hold = button(t('admin_acct_hold', 'Bloquer le compte'), 'btn-danger', function () { holdAccount('hold', hold); });
+      hold.dataset.armed = '0';
+    } else {
+      var release = button(t('admin_acct_release', 'Débloquer le compte'), '', function () { holdAccount('release', release); });
+      release.dataset.armed = '0';
+    }
+  }
+
+  function recordTransaction() {
+    show($('acct-error'), false);
+    show($('acct-ok'), false);
+    var amount = parseFloat($('tx-amount').value);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      var err = $('acct-error');
+      err.textContent = t('admin_acct_tx_invalid', 'Indiquez un montant valide supérieur à zéro.');
+      show(err, true);
+      return;
+    }
+    fetch('/api/admin-transaction', {
+      method: 'POST',
+      headers: headers(),
+      body: JSON.stringify({
+        account_id: state.acctDetailId,
+        type: $('tx-type').value,
+        amount: amount,
+        note: $('tx-note').value.trim()
+      })
+    })
+      .then(function (r) {
+        if (r.status === 401) { authFailed(); throw new Error('auth'); }
+        return r.json().then(function (data) { return { status: r.status, data: data }; });
+      })
+      .then(function (pair) {
+        if (!pair.data.ok) throw new Error(pair.data.error || 'transaction');
+        var ok = $('acct-ok');
+        ok.textContent = t('admin_acct_tx_done', 'Mouvement enregistré.');
+        show(ok, true);
+        loadAccounts();
+        openAcctDetail(state.acctDetailId);
+      })
+      .catch(function (e) {
+        if (e.message === 'auth') return;
+        var err = $('acct-error');
+        err.textContent =
+          e.message === 'insufficient_balance' ? t('admin_acct_tx_insufficient', 'Solde insuffisant pour ce retrait.') :
+          e.message === 'account_on_hold' ? t('admin_acct_tx_hold_error', 'Le compte est bloqué : aucun mouvement n\'est possible.') :
+          t('admin_acct_tx_error', 'Le mouvement n\'a pas pu être enregistré.');
+        show(err, true);
+      });
+  }
+
+  function holdAccount(action, button) {
+    if (button.dataset.armed !== '1') {
+      button.dataset.armed = '1';
+      button.textContent = action === 'hold'
+        ? t('admin_acct_hold_confirm', 'Confirmer le blocage du compte ?')
+        : t('admin_acct_release_confirm', 'Confirmer le déblocage du compte ?');
+      setTimeout(function () {
+        if (button.isConnected) {
+          button.dataset.armed = '0';
+          button.textContent = action === 'hold'
+            ? t('admin_acct_hold', 'Bloquer le compte')
+            : t('admin_acct_release', 'Débloquer le compte');
+        }
+      }, 5000);
+      return;
+    }
+    show($('acct-error'), false);
+    show($('acct-ok'), false);
+    fetch('/api/admin-hold', {
+      method: 'POST',
+      headers: headers(),
+      body: JSON.stringify({ account_id: state.acctDetailId, action: action, note: '' })
+    })
+      .then(function (r) {
+        if (r.status === 401) { authFailed(); throw new Error('auth'); }
+        return r.json().then(function (data) { return { status: r.status, data: data }; });
+      })
+      .then(function (pair) {
+        if (!pair.data.ok) throw new Error('hold');
+        var ok = $('acct-ok');
+        ok.textContent = action === 'hold'
+          ? t('admin_acct_hold_done', 'Compte bloqué.')
+          : t('admin_acct_release_done', 'Compte débloqué.');
+        show(ok, true);
+        loadAccounts();
+        openAcctDetail(state.acctDetailId);
+      })
+      .catch(function (e) {
+        if (e.message === 'auth') return;
+        var err = $('acct-error');
+        err.textContent = t('admin_acct_hold_error', 'Le blocage n\'a pas pu être enregistré.');
+        show(err, true);
+      });
+  }
+
+  function trfRegionLabel(region) {
+    return {
+      africa: t('trf_region_africa', 'Afrique'),
+      europe: t('trf_region_europe', 'Europe'),
+      america: t('trf_region_america', 'Amérique'),
+      asia: t('trf_region_asia', 'Asie')
+    }[region] || region;
+  }
+
+  function trfCurrentFilters() {
+    return {
+      search: $('trf-search').value.trim(),
+      status: $('trf-filter-status').value,
+      region: $('trf-filter-region').value,
+      sort: state.trfSort,
+      order: state.trfOrder,
+      page: state.trfPage
+    };
+  }
+
+  function loadTransfers() {
+    var f = trfCurrentFilters();
+    var params = new URLSearchParams();
+    Object.keys(f).forEach(function (k) { if (f[k] !== '' && f[k] !== null) params.set(k, f[k]); });
+    show($('trf-loading'), true);
+    show($('trf-load-error'), false);
+    fetch('/api/admin-transfers?' + params.toString(), { headers: { 'Authorization': 'Bearer ' + token() } })
+      .then(function (r) {
+        if (r.status === 401) { authFailed(); throw new Error('auth'); }
+        if (!r.ok) throw new Error('load');
+        return r.json();
+      })
+      .then(function (data) {
+        show($('trf-loading'), false);
+        if (!data.ok) throw new Error('load');
+        var stats = data.stats || {};
+        $('trf-stat-total').textContent = stats.total != null ? stats.total : '—';
+        $('trf-stat-pending').textContent = stats.pending != null ? stats.pending : '—';
+        $('trf-stat-approved').textContent = stats.approved != null ? stats.approved : '—';
+        $('trf-stat-rejected').textContent = stats.rejected != null ? stats.rejected : '—';
+        var rows = data.transfers || [];
+        var tbody = $('trf-rows');
+        tbody.innerHTML = '';
+        rows.forEach(function (trf) {
+          var tr = document.createElement('tr');
+          tr.className = 'clickable-row';
+          tr.innerHTML =
+            '<td data-label="' + escapeHtml(t('admin_col_ref', 'Référence')) + '">' + escapeHtml(trf.reference) + '</td>' +
+            '<td data-label="' + escapeHtml(t('admin_trf_col_sender', 'Expéditeur')) + '">' + escapeHtml(trf.sender_name) + '</td>' +
+            '<td data-label="' + escapeHtml(t('admin_trf_col_bank', 'Banque destinataire')) + '">' + escapeHtml(trf.destination_bank + ' (' + trf.destination_country + ')') + '</td>' +
+            '<td data-label="' + escapeHtml(t('admin_trf_col_amount', 'Montant')) + '">' + escapeHtml(formatMoney(trf.amount, trf.currency)) + '</td>' +
+            '<td data-label="' + escapeHtml(t('admin_col_status', 'Statut')) + '"><span class="status-pill status-' + escapeHtml(trf.status) + '">' + escapeHtml(statusLabel(trf.status)) + '</span></td>' +
+            '<td data-label="' + escapeHtml(t('admin_col_date', 'Date')) + '">' + escapeHtml(formatDate(trf.created_at)) + '</td>';
+          tr.addEventListener('click', function () { openTrfDetail(trf); });
+          tbody.appendChild(tr);
+        });
+        show($('trf-table'), rows.length > 0);
+        show($('trf-empty'), rows.length === 0);
+        show($('trf-pager'), data.total_pages > 1);
+        $('trf-page-label').textContent = data.page + ' ' + t('admin_page_of', 'sur') + ' ' + data.total_pages;
+        $('trf-prev').disabled = data.page <= 1;
+        $('trf-next').disabled = data.page >= data.total_pages;
+        document.querySelectorAll('.trf-sort-btn').forEach(function (btn) {
+          btn.dataset.dir = (btn.dataset.sort === state.trfSort) ? state.trfOrder : '';
+        });
+      })
+      .catch(function (e) {
+        if (e.message === 'auth') return;
+        show($('trf-loading'), false);
+        var err = $('trf-load-error');
+        err.textContent = t('admin_trf_load_error', 'Impossible de charger les virements.');
+        show(err, true);
+      });
+  }
+
+  function openTrfDetail(trf) {
+    state.trfDetailId = trf.id;
+    show($('trf-error'), false);
+    show($('trf-ok'), false);
+    $('trf-ref').textContent = trf.reference + ' — ' + trf.sender_name;
+    var fields = [
+      [t('admin_trf_col_sender', 'Expéditeur'), trf.sender_name],
+      [t('trf_sender_email', 'Votre adresse e-mail'), trf.sender_email],
+      [t('trf_sender_phone', 'Votre téléphone (facultatif)'), trf.sender_phone || '—'],
+      [t('trf_account_number', 'Votre numéro de compte'), trf.account_number],
+      [t('admin_trf_col_bank', 'Banque destinataire'), trf.destination_bank + ' (' + trf.destination_country + ')'],
+      [t('admin_trf_region_label', 'Région'), trfRegionLabel(trf.destination_region)],
+      [t('trf_recipient_name', 'Nom du bénéficiaire'), trf.recipient_name],
+      [t('trf_recipient_account', 'Numéro de compte du bénéficiaire'), trf.recipient_account],
+      [t('admin_trf_col_amount', 'Montant'), formatMoney(trf.amount, trf.currency)],
+      [t('trf_currency', 'Devise'), trf.currency],
+      [t('trf_purpose', 'Motif (facultatif)'), trf.purpose || '—'],
+      [t('admin_col_status', 'Statut'), statusLabel(trf.status)],
+      [t('admin_created', 'Envoyée le'), formatDate(trf.created_at)],
+      [t('admin_reviewed', 'Dernière décision le'), formatDate(trf.reviewed_at)],
+      [t('admin_note_label', 'Note interne'), trf.admin_note || '—']
+    ];
+    var dl = $('trf-fields');
+    dl.innerHTML = '';
+    fields.forEach(function (pair) {
+      var dt = document.createElement('dt');
+      dt.textContent = pair[0];
+      var dd = document.createElement('dd');
+      dd.textContent = pair[1];
+      dl.appendChild(dt);
+      dl.appendChild(dd);
+    });
+    $('trf-note').value = trf.admin_note || '';
+    renderTrfActions(trf.status);
+    show($('trf-detail'), true);
+    $('trf-detail').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function renderTrfActions(status) {
+    var box = $('trf-actions');
+    box.innerHTML = '';
+    function button(label, cls, fn) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'btn ' + cls;
+      b.textContent = label;
+      b.addEventListener('click', fn);
+      box.appendChild(b);
+      return b;
+    }
+    if (status === 'pending') {
+      button(t('admin_trf_approve', 'Approuver'), '', function () { reviewTransfer('approved'); });
+      button(t('admin_trf_reject', 'Refuser'), 'btn-outline', function () { reviewTransfer('rejected'); });
+    }
+  }
+
+  function reviewTransfer(decision) {
+    show($('trf-error'), false);
+    show($('trf-ok'), false);
+    fetch('/api/admin-transfer-review', {
+      method: 'POST',
+      headers: headers(),
+      body: JSON.stringify({ id: state.trfDetailId, decision: decision, note: $('trf-note').value.trim() })
+    })
+      .then(function (r) {
+        if (r.status === 401) { authFailed(); throw new Error('auth'); }
+        return r.json().then(function (data) { return { status: r.status, data: data }; });
+      })
+      .then(function (pair) {
+        if (!pair.data.ok) throw new Error(pair.data.error || 'review');
+        var ok = $('trf-ok');
+        var msg = t('admin_trf_review_done', 'Décision enregistrée.');
+        if (pair.data.email_sent === false) {
+          msg += ' ' + t('admin_email_skipped', "L'e-mail au client n'a pas été envoyé (l'e-mail n'est pas encore configuré).");
+        }
+        ok.textContent = msg;
+        show(ok, true);
+        loadTransfers();
+        show($('trf-detail'), false);
+        state.trfDetailId = null;
+      })
+      .catch(function (e) {
+        if (e.message === 'auth') return;
+        var err = $('trf-error');
+        err.textContent = t('admin_trf_review_error', "La décision n'a pas pu être enregistrée.");
+        show(err, true);
+      });
+  }
+
   document.addEventListener('DOMContentLoaded', function () {
     $('admin-login-form').addEventListener('submit', function (e) {
       e.preventDefault();
@@ -394,7 +872,7 @@
           $('admin-password').value = '';
           show($('admin-login'), false);
           show($('admin-panel'), true);
-          loadList();
+          switchView('applications');
         })
         .catch(function () {
           err.textContent = t('admin_login_error', 'Mot de passe incorrect.');
@@ -433,8 +911,62 @@
       show($('admin-detail'), false);
       state.detailId = null;
     });
+    $('tab-applications').addEventListener('click', function () { switchView('applications'); });
+    $('tab-accounts').addEventListener('click', function () { switchView('accounts'); });
+    $('tab-transfers').addEventListener('click', function () { switchView('transfers'); });
+    var acctSearchTimer = null;
+    $('acct-search').addEventListener('input', function () {
+      clearTimeout(acctSearchTimer);
+      acctSearchTimer = setTimeout(function () { state.acctPage = 1; loadAccounts(); }, 400);
+    });
+    $('acct-filter-status').addEventListener('change', function () { state.acctPage = 1; loadAccounts(); });
+    document.querySelectorAll('.acct-sort-btn').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var key = btn.dataset.sort;
+        if (state.acctSort === key) state.acctOrder = state.acctOrder === 'asc' ? 'desc' : 'asc';
+        else { state.acctSort = key; state.acctOrder = 'asc'; }
+        loadAccounts();
+      });
+    });
+    $('acct-prev').addEventListener('click', function () {
+      if (state.acctPage > 1) { state.acctPage -= 1; loadAccounts(); }
+    });
+    $('acct-next').addEventListener('click', function () { state.acctPage += 1; loadAccounts(); });
+    $('acct-back').addEventListener('click', function () {
+      show($('acct-detail'), false);
+      state.acctDetailId = null;
+    });
+    $('tx-submit').addEventListener('click', recordTransaction);
+    var trfSearchTimer = null;
+    $('trf-search').addEventListener('input', function () {
+      clearTimeout(trfSearchTimer);
+      trfSearchTimer = setTimeout(function () { state.trfPage = 1; loadTransfers(); }, 400);
+    });
+    ['trf-filter-status', 'trf-filter-region'].forEach(function (id) {
+      $(id).addEventListener('change', function () { state.trfPage = 1; loadTransfers(); });
+    });
+    document.querySelectorAll('.trf-sort-btn').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var key = btn.dataset.sort;
+        if (state.trfSort === key) state.trfOrder = state.trfOrder === 'asc' ? 'desc' : 'asc';
+        else { state.trfSort = key; state.trfOrder = 'asc'; }
+        loadTransfers();
+      });
+    });
+    $('trf-prev').addEventListener('click', function () {
+      if (state.trfPage > 1) { state.trfPage -= 1; loadTransfers(); }
+    });
+    $('trf-next').addEventListener('click', function () { state.trfPage += 1; loadTransfers(); });
+    $('trf-back').addEventListener('click', function () {
+      show($('trf-detail'), false);
+      state.trfDetailId = null;
+    });
     document.addEventListener('icb-lang', function () {
-      if (token() && !$('admin-panel').hidden) loadList();
+      if (token() && !$('admin-panel').hidden) {
+        if (state.view === 'accounts') loadAccounts();
+        else if (state.view === 'transfers') loadTransfers();
+        else loadList();
+      }
     });
   });
 })();

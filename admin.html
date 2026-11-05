@@ -17,6 +17,7 @@
       <a href="business.html" data-i18n="nav_business">Entreprises</a>
       <a href="loans.html" data-i18n="nav_loans">Prêts</a>
       <a href="digital.html" data-i18n="nav_digital">Banque digitale</a>
+      <a href="transfers.html" data-i18n="nav_transfers">Transferts</a>
       <a href="rates.html" data-i18n="nav_rates">Taux et frais</a>
       <a href="branches.html" data-i18n="nav_branches">Agences et GAB</a>
       <a href="contact.html" data-i18n="nav_contact">Contact</a>
@@ -44,6 +45,13 @@
         <button class="btn btn-outline" id="admin-logout" type="button" data-i18n="admin_logout">Se déconnecter</button>
       </div>
 
+      <div class="admin-tabs" role="tablist">
+        <button type="button" class="admin-tab active" id="tab-applications" data-i18n="admin_tab_applications">Demandes</button>
+        <button type="button" class="admin-tab" id="tab-accounts" data-i18n="admin_tab_accounts">Comptes clients</button>
+        <button type="button" class="admin-tab" id="tab-transfers" data-i18n="admin_tab_transfers">Virements</button>
+      </div>
+
+      <div id="view-applications">
       <div class="stat-grid" id="admin-stats">
         <div class="stat-card"><span class="stat-num" id="stat-total">—</span><span class="stat-label" data-i18n="admin_stat_total">Total</span></div>
         <div class="stat-card"><span class="stat-num" id="stat-pending">—</span><span class="stat-label" data-i18n="admin_stat_pending">En attente</span></div>
@@ -110,9 +118,150 @@
         <h3 data-i18n="admin_timeline_title">Historique</h3>
         <ul class="timeline" id="detail-timeline"></ul>
         <div class="field"><label data-i18n="admin_note_label" for="detail-note">Note interne</label><textarea id="detail-note" rows="3" data-i18n-placeholder="admin_note_placeholder" placeholder="Note pour le dossier (facultatif)"></textarea></div>
+        <div id="deposit-fields" hidden>
+          <div class="field"><label data-i18n="admin_deposit_amount_label" for="deposit-amount">Montant du dépôt</label><input type="number" id="deposit-amount" min="0" step="0.01" inputmode="decimal"></div>
+          <div class="field"><label data-i18n="admin_deposit_currency_label" for="deposit-currency">Devise</label><input type="text" id="deposit-currency" value="XAF" maxlength="3"></div>
+        </div>
+        <div id="detail-account" hidden>
+          <h3 data-i18n="admin_accounts_title">Comptes clients</h3>
+          <p><span data-i18n="admin_acct_col_number">Numéro de compte</span> : <strong id="detail-account-number"></strong></p>
+          <p><span data-i18n="admin_acct_col_balance">Solde</span> : <strong id="detail-account-balance"></strong></p>
+          <button class="btn btn-outline" id="detail-view-account" type="button" data-i18n="admin_acct_view">Voir le compte</button>
+        </div>
         <div class="detail-actions" id="detail-actions"></div>
         <p class="admin-error" id="detail-error" hidden></p>
         <p class="admin-ok" id="detail-ok" hidden></p>
+      </div>
+      </div>
+
+      <div id="view-accounts" hidden>
+        <div class="stat-grid" id="acct-stats">
+          <div class="stat-card"><span class="stat-num" id="acct-stat-total">—</span><span class="stat-label" data-i18n="admin_acct_stat_total">Comptes</span></div>
+          <div class="stat-card"><span class="stat-num" id="acct-stat-balance">—</span><span class="stat-label" data-i18n="admin_acct_stat_balance">Solde total</span></div>
+          <div class="stat-card"><span class="stat-num" id="acct-stat-hold">—</span><span class="stat-label" data-i18n="admin_acct_stat_hold">Bloqués</span></div>
+        </div>
+
+        <div class="admin-toolbar">
+          <input type="search" id="acct-search" data-i18n-placeholder="admin_acct_search_placeholder" placeholder="Rechercher (nom, numéro de compte, référence)…">
+          <select id="acct-filter-status" aria-label="Statut">
+            <option value="" data-i18n="admin_filter_all">Tous les statuts</option>
+            <option value="active" data-i18n="admin_status_active">Actif</option>
+            <option value="on_hold" data-i18n="admin_acct_status_hold">Bloqué</option>
+          </select>
+        </div>
+
+        <p class="admin-error" id="acct-load-error" hidden></p>
+        <p id="acct-loading" data-i18n="admin_loading">Chargement…</p>
+        <p id="acct-empty" hidden data-i18n="admin_acct_empty">Aucun compte pour le moment.</p>
+
+        <div class="table-wrap">
+          <table id="acct-table" hidden>
+            <thead><tr>
+              <th><button type="button" class="acct-sort-btn" data-sort="account_number" data-i18n="admin_acct_col_number">Numéro de compte</button></th>
+              <th data-i18n="admin_acct_col_client">Client</th>
+              <th><button type="button" class="acct-sort-btn" data-sort="balance" data-i18n="admin_acct_col_balance">Solde</button></th>
+              <th data-i18n="admin_col_status">Statut</th>
+              <th><button type="button" class="acct-sort-btn" data-sort="created_at" data-i18n="admin_col_date">Date</button></th>
+            </tr></thead>
+            <tbody id="acct-rows"></tbody>
+          </table>
+        </div>
+
+        <div class="pager" id="acct-pager" hidden>
+          <button class="btn btn-outline" id="acct-prev" type="button" data-i18n="admin_page_prev">← Précédent</button>
+          <span id="acct-page-label"></span>
+          <button class="btn btn-outline" id="acct-next" type="button" data-i18n="admin_page_next">Suivant →</button>
+        </div>
+
+        <div id="acct-detail" hidden>
+          <button class="btn btn-outline" id="acct-back" type="button" data-i18n="admin_back">← Retour à la liste</button>
+          <h2 id="acct-ref"></h2>
+          <dl class="detail-grid" id="acct-fields"></dl>
+          <p><button class="btn btn-outline" id="acct-view-application" type="button" data-i18n="admin_acct_view_application">Voir la demande</button></p>
+          <h3 data-i18n="admin_acct_tx_title">Mouvements</h3>
+          <p id="acct-tx-empty" hidden data-i18n="admin_acct_tx_empty">Aucun mouvement pour le moment.</p>
+          <div class="table-wrap">
+            <table id="acct-tx-table" hidden>
+              <thead><tr>
+                <th data-i18n="admin_col_date">Date</th>
+                <th data-i18n="admin_acct_tx_type_label">Type de mouvement</th>
+                <th data-i18n="admin_acct_tx_amount">Montant</th>
+                <th data-i18n="admin_acct_tx_note">Motif</th>
+              </tr></thead>
+              <tbody id="acct-tx-rows"></tbody>
+            </table>
+          </div>
+          <h3 data-i18n="admin_acct_tx_record">Enregistrer le mouvement</h3>
+          <div class="tx-form">
+            <div class="field"><label data-i18n="admin_acct_tx_type_label" for="tx-type">Type de mouvement</label><select id="tx-type"><option value="deposit" data-i18n="admin_acct_tx_deposit">Dépôt</option><option value="withdrawal" data-i18n="admin_acct_tx_withdrawal">Retrait</option></select></div>
+            <div class="field"><label data-i18n="admin_acct_tx_amount" for="tx-amount">Montant</label><input type="number" id="tx-amount" min="0" step="0.01" inputmode="decimal"></div>
+            <div class="field"><label data-i18n="admin_acct_tx_note" for="tx-note">Motif</label><input type="text" id="tx-note" maxlength="1000"></div>
+            <button class="btn" id="tx-submit" type="button" data-i18n="admin_acct_tx_record">Enregistrer le mouvement</button>
+          </div>
+          <div class="detail-actions" id="acct-actions"></div>
+          <p class="admin-error" id="acct-error" hidden></p>
+          <p class="admin-ok" id="acct-ok" hidden></p>
+        </div>
+      </div>
+
+      <div id="view-transfers" hidden>
+        <div class="stat-grid" id="trf-stats">
+          <div class="stat-card"><span class="stat-num" id="trf-stat-total">—</span><span class="stat-label" data-i18n="admin_stat_total">Total</span></div>
+          <div class="stat-card"><span class="stat-num" id="trf-stat-pending">—</span><span class="stat-label" data-i18n="admin_stat_pending">En attente</span></div>
+          <div class="stat-card"><span class="stat-num" id="trf-stat-approved">—</span><span class="stat-label" data-i18n="admin_trf_stat_approved">Approuvés</span></div>
+          <div class="stat-card"><span class="stat-num" id="trf-stat-rejected">—</span><span class="stat-label" data-i18n="admin_stat_rejected">Refusées</span></div>
+        </div>
+
+        <div class="admin-toolbar">
+          <input type="search" id="trf-search" data-i18n-placeholder="admin_trf_search_placeholder" placeholder="Rechercher (nom, référence, banque)…">
+          <select id="trf-filter-status" aria-label="Statut">
+            <option value="" data-i18n="admin_filter_all">Tous les statuts</option>
+            <option value="pending" data-i18n="admin_status_pending">En attente</option>
+            <option value="approved" data-i18n="admin_status_approved">Approuvée</option>
+            <option value="rejected" data-i18n="admin_status_rejected">Refusée</option>
+          </select>
+          <select id="trf-filter-region" aria-label="Région">
+            <option value="" data-i18n="admin_trf_filter_all_regions">Toutes les régions</option>
+            <option value="africa" data-i18n="trf_region_africa">Afrique</option>
+            <option value="europe" data-i18n="trf_region_europe">Europe</option>
+            <option value="america" data-i18n="trf_region_america">Amérique</option>
+            <option value="asia" data-i18n="trf_region_asia">Asie</option>
+          </select>
+        </div>
+
+        <p class="admin-error" id="trf-load-error" hidden></p>
+        <p id="trf-loading" data-i18n="admin_loading">Chargement…</p>
+        <p id="trf-empty" hidden data-i18n="admin_trf_empty">Aucune demande de virement pour le moment.</p>
+
+        <div class="table-wrap">
+          <table id="trf-table" hidden>
+            <thead><tr>
+              <th><button type="button" class="trf-sort-btn" data-sort="reference" data-i18n="admin_col_ref">Référence</button></th>
+              <th data-i18n="admin_trf_col_sender">Expéditeur</th>
+              <th data-i18n="admin_trf_col_bank">Banque destinataire</th>
+              <th><button type="button" class="trf-sort-btn" data-sort="amount" data-i18n="admin_trf_col_amount">Montant</button></th>
+              <th data-i18n="admin_col_status">Statut</th>
+              <th><button type="button" class="trf-sort-btn" data-sort="created_at" data-i18n="admin_col_date">Date</button></th>
+            </tr></thead>
+            <tbody id="trf-rows"></tbody>
+          </table>
+        </div>
+
+        <div class="pager" id="trf-pager" hidden>
+          <button class="btn btn-outline" id="trf-prev" type="button" data-i18n="admin_page_prev">← Précédent</button>
+          <span id="trf-page-label"></span>
+          <button class="btn btn-outline" id="trf-next" type="button" data-i18n="admin_page_next">Suivant →</button>
+        </div>
+
+        <div id="trf-detail" hidden>
+          <button class="btn btn-outline" id="trf-back" type="button" data-i18n="admin_back">← Retour à la liste</button>
+          <h2 id="trf-ref"></h2>
+          <dl class="detail-grid" id="trf-fields"></dl>
+          <div class="field"><label data-i18n="admin_note_label" for="trf-note">Note interne</label><textarea id="trf-note" rows="3" data-i18n-placeholder="admin_note_placeholder" placeholder="Note pour le dossier (facultatif)"></textarea></div>
+          <div class="detail-actions" id="trf-actions"></div>
+          <p class="admin-error" id="trf-error" hidden></p>
+          <p class="admin-ok" id="trf-ok" hidden></p>
+        </div>
       </div>
     </div>
 
