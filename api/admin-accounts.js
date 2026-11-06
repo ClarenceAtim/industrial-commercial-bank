@@ -4,6 +4,7 @@
 //   /api/admin-account?op=detail      one account (GET) / delete it (DELETE)
 //   /api/admin-transaction?op=transaction  record a deposit or withdrawal
 //   /api/admin-hold?op=hold           put an account on hold / release it
+//   /api/admin-reset-pin?op=reset-pin  staff reset of a client's 4-digit PIN
 //   /api/admin-deposits?op=deposits   list client deposit requests (GET)
 //   /api/admin-deposit-review?op=deposit-review  approve or refuse a
 //                                     deposit request; approving credits
@@ -18,6 +19,7 @@ const { requireAdmin } = require('./_auth');
 const { validPin, hashPin, pinColumnsPresent, PIN_MIGRATION_MESSAGE } = require('./_auth');
 const { validCurrency } = require('./_money');
 const { validAmount } = require('./_money');
+const { notifyClientCreditAlert } = require('./_mail');
 
 const LIST_COLUMNS =
   'a.id, a.application_id, a.account_number, a.currency, a.balance, a.status, ' +
@@ -260,7 +262,8 @@ async function handleAccountGet(req, res) {
   try {
     const result = await pool.query(
       'SELECT a.id, a.application_id, a.account_number, a.currency, a.balance, ' +
-        'a.status, a.created_at, a.updated_at, ap.reference, ap.first_name, ' +
+        'a.status, a.created_at, a.updated_at, a.pin_hash IS NOT NULL AS pin_set, ' +
+        'ap.reference, ap.first_name, ' +
         'ap.last_name, ap.email, ap.phone, ap.account_type, ap.status AS application_status ' +
         'FROM accounts a JOIN applications ap ON ap.id = a.application_id ' +
         'WHERE ' + (id ? 'a.id = $1' : 'a.application_id = $1'),
@@ -282,6 +285,7 @@ async function handleAccountGet(req, res) {
       currency: row.currency,
       balance: row.balance,
       status: row.status,
+      pin_set: !!row.pin_set,
       created_at: row.created_at,
       updated_at: row.updated_at,
       reference: row.reference,
@@ -428,11 +432,96 @@ async function handleTransaction(req, res) {
       [account.application_id, eventAction, eventNote]
     );
     await client.query('COMMIT');
+    // A deposit is a credit alert for the client: email them the amount,
+    // the new balance, and the message staff typed. Best-effort — the
+    // deposit itself already succeeded, and email stays inert until the
+    // bank's SMTP details are configured.
+    let emailSent = false;
+    if (type === 'deposit') {
+      try {
+        const who = await pool.query(
+          'SELECT ap.email, ap.first_name, ap.last_name, a.account_number ' +
+            'FROM accounts a JOIN applications ap ON ap.id = a.application_id WHERE a.id = $1',
+          [accountId]
+        );
+        if (who.rows.length > 0) {
+          emailSent = await notifyClientCreditAlert({
+            email: who.rows[0].email,
+            name: who.rows[0].first_name + ' ' + who.rows[0].last_name,
+            account_number: who.rows[0].account_number,
+            amount: amount,
+            currency: account.currency,
+            balance: updated.rows[0].balance,
+            message: note || ''
+          });
+        }
+      } catch (ignored) {}
+    }
     return res.status(200).json({
       ok: true,
       balance: updated.rows[0].balance,
-      currency: updated.rows[0].currency
+      currency: updated.rows[0].currency,
+      email_sent: emailSent
     });
+  } catch (e) {
+    try { await client.query('ROLLBACK'); } catch (ignored) {}
+    return res.status(500).json({ ok: false, error: 'server_error' });
+  } finally {
+    client.release();
+  }
+}
+
+async function handleResetPin(req, res) {
+  if (req.method !== 'POST') {
+    res.setHeader('Allow', 'POST');
+    return res.status(405).json({ ok: false, error: 'method_not_allowed' });
+  }
+  if (!requireAdmin(req, res)) return;
+
+  const body = req.body || {};
+  const accountId = parseInt(body.account_id, 10);
+  const pin = typeof body.pin === 'string' ? body.pin.trim() : '';
+  if (!accountId || !validPin(pin)) {
+    return res.status(400).json({ ok: false, error: 'invalid_pin' });
+  }
+
+  let pool;
+  try {
+    pool = getPool();
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: 'server_error' });
+  }
+
+  const client = await pool.connect();
+  try {
+    if (!(await pinColumnsPresent(client))) {
+      return res.status(500).json({
+        ok: false,
+        error: 'migration_required',
+        message: PIN_MIGRATION_MESSAGE
+      });
+    }
+    await client.query('BEGIN');
+    const found = await client.query(
+      'SELECT id, application_id, account_number FROM accounts WHERE id = $1 FOR UPDATE',
+      [accountId]
+    );
+    if (found.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ ok: false, error: 'not_found' });
+    }
+    // Only the salted hash is stored; the PIN itself is never kept.
+    // Resetting also clears any lockout from wrong attempts.
+    await client.query(
+      'UPDATE accounts SET pin_hash = $1, failed_login_attempts = 0, pin_locked_until = NULL, updated_at = now() WHERE id = $2',
+      [hashPin(pin), accountId]
+    );
+    await client.query(
+      'INSERT INTO application_events (application_id, action, note) VALUES ($1, $2, $3)',
+      [found.rows[0].application_id, 'pin_reset', 'Client PIN reset by staff']
+    );
+    await client.query('COMMIT');
+    return res.status(200).json({ ok: true, pin_set: true });
   } catch (e) {
     try { await client.query('ROLLBACK'); } catch (ignored) {}
     return res.status(500).json({ ok: false, error: 'server_error' });
@@ -681,11 +770,35 @@ async function handleDepositReview(req, res) {
       [decision, note || null, id]
     );
     await client.query('COMMIT');
+    // Approving a deposit credits the account: send the client the same
+    // credit alert as a staff-recorded deposit. Best-effort.
+    let emailSent = false;
+    if (decision === 'approved') {
+      try {
+        const who = await pool.query(
+          'SELECT ap.email, ap.first_name, ap.last_name, a.account_number ' +
+            'FROM accounts a JOIN applications ap ON ap.id = a.application_id WHERE a.id = $1',
+          [request.account_id]
+        );
+        if (who.rows.length > 0) {
+          emailSent = await notifyClientCreditAlert({
+            email: who.rows[0].email,
+            name: who.rows[0].first_name + ' ' + who.rows[0].last_name,
+            account_number: who.rows[0].account_number,
+            amount: request.amount,
+            currency: request.currency,
+            balance: balance,
+            message: note || ''
+          });
+        }
+      } catch (ignored) {}
+    }
     return res.status(200).json({
       ok: true,
       status: decision,
       balance: balance,
-      currency: request.account_currency
+      currency: request.account_currency,
+      email_sent: emailSent
     });
   } catch (e) {
     try { await client.query('ROLLBACK'); } catch (ignored) {}
@@ -699,6 +812,7 @@ module.exports = async function handler(req, res) {
   const op = req.query && typeof req.query.op === 'string' ? req.query.op : '';
   if (op === 'detail') return handleAccountDetail(req, res);
   if (op === 'transaction') return handleTransaction(req, res);
+  if (op === 'reset-pin') return handleResetPin(req, res);
   if (op === 'hold') return handleHold(req, res);
   if (op === 'deposits') return handleDepositsList(req, res);
   if (op === 'deposit-review') return handleDepositReview(req, res);

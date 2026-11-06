@@ -173,11 +173,23 @@ async function handleApplicationDetail(req, res) {
   }
 
   try {
+    // The country + parental-approval columns arrive with the 2026-11-06
+    // client-form migration. Until it has run, the detail still works —
+    // those fields simply come back empty.
+    const colProbe = await pool.query(
+      "SELECT column_name FROM information_schema.columns WHERE table_name = 'applications' " +
+        "AND column_name IN ('country', 'parent_guardian_name', 'parental_consent')"
+    );
+    const haveCols = {};
+    colProbe.rows.forEach(function (r) { haveCols[r.column_name] = true; });
+    const extraCols = ['country', 'parent_guardian_name', 'parental_consent']
+      .filter(function (c) { return haveCols[c]; });
     const result = await pool.query(
       'SELECT id, reference, first_name, last_name, dob, nationality, phone, email, ' +
         'address, id_type, id_number, id_photo, id_photo_filename, id_photo_mimetype, ' +
-        'account_type, status, admin_note, created_at, reviewed_at ' +
-        'FROM applications WHERE id = $1',
+        'account_type, status, admin_note, created_at, reviewed_at' +
+        (extraCols.length ? ', ' + extraCols.join(', ') : '') +
+        ' FROM applications WHERE id = $1',
       [id]
     );
     if (result.rows.length === 0) {
@@ -199,6 +211,9 @@ async function handleApplicationDetail(req, res) {
       phone: row.phone,
       email: row.email,
       address: row.address,
+      country: row.country || null,
+      parent_guardian_name: row.parent_guardian_name || null,
+      parental_consent: !!row.parental_consent,
       id_type: row.id_type,
       id_number: row.id_number,
       id_photo_base64: row.id_photo ? row.id_photo.toString('base64') : null,

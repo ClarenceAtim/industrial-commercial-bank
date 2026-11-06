@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -212,8 +212,13 @@
           <div class="tx-form">
             <div class="field"><label data-i18n="admin_acct_tx_type_label" for="tx-type">Type de mouvement</label><select id="tx-type"><option value="deposit" data-i18n="admin_acct_tx_deposit">Dépôt</option><option value="withdrawal" data-i18n="admin_acct_tx_withdrawal">Retrait</option></select></div>
             <div class="field"><label data-i18n="admin_acct_tx_amount" for="tx-amount">Montant</label><input type="number" id="tx-amount" min="0" step="0.01" inputmode="decimal"></div>
-            <div class="field"><label data-i18n="admin_acct_tx_note" for="tx-note">Motif</label><input type="text" id="tx-note" maxlength="1000"></div>
+            <div class="field"><label data-i18n="admin_acct_tx_note" for="tx-note">Motif</label><input type="text" id="tx-note" maxlength="1000"><small data-i18n="admin_tx_note_hint">Ce message est envoyé au client avec l'e-mail d'alerte de crédit et affiché sur son tableau de bord.</small></div>
             <button class="btn" id="tx-submit" type="button" data-i18n="admin_acct_tx_record">Enregistrer le mouvement</button>
+          </div>
+          <h3 data-i18n="admin_pin_reset_title">Réinitialiser le code PIN du client</h3>
+          <div class="tx-form">
+            <div class="field"><label data-i18n="admin_pin_reset_label" for="reset-pin">Nouveau code PIN à 4 chiffres</label><input type="password" id="reset-pin" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" autocomplete="off"></div>
+            <button class="btn" id="reset-pin-submit" type="button" data-i18n="admin_pin_reset_button">Réinitialiser le PIN</button>
           </div>
           <div class="detail-actions" id="acct-actions"></div>
           <p class="admin-error" id="acct-error" hidden></p>

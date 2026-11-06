@@ -1,4 +1,4 @@
-/* Industrial Commercial Bank — dictionary-based i18n (FR primary + EN/ES/PT/AR/DE/ZH/TH/VI/JA/KO) */
+/* Industrial Commercial Bank — dictionary-based i18n (EN default + FR/ES/PT/AR/DE/ZH/TH/VI/JA/KO) */
 (function () {
   var LANGS = ['fr', 'en', 'es', 'pt', 'ar', 'de', 'zh', 'th', 'vi', 'ja', 'ko'];
   var cache = {};
@@ -31,17 +31,17 @@
     document.dispatchEvent(new CustomEvent('icb-lang', { detail: lang }));
   }
   function setLang(lang) {
-    if (LANGS.indexOf(lang) === -1) lang = 'fr';
+    if (LANGS.indexOf(lang) === -1) lang = 'en';
     if (cache[lang]) { apply(lang, cache[lang]); return; }
     fetch('languages/' + lang + '.json').then(function (r) { return r.json(); })
       .then(function (dict) { cache[lang] = dict; apply(lang, dict); })
-      .catch(function () { syncControls(lang); /* keep default French text on failure */ });
+      .catch(function () { syncControls(lang); /* keep the page text on failure */ });
   }
   document.addEventListener('DOMContentLoaded', function () {
     var saved = null;
     try { saved = localStorage.getItem('icb-lang'); } catch (e) {}
-    if (saved && LANGS.indexOf(saved) !== -1 && saved !== 'fr') setLang(saved);
-    else syncControls('fr');
+    if (saved && LANGS.indexOf(saved) !== -1) setLang(saved);
+    else setLang('en');
     document.querySelectorAll('.lang-switch button').forEach(function (b) {
       b.addEventListener('click', function () { setLang(b.getAttribute('data-lang')); });
     });

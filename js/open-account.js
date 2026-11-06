@@ -20,11 +20,33 @@
     });
   }
 
+  function ageFromDob(value) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(value || '')) return null;
+    var parts = value.split('-').map(Number);
+    var now = new Date();
+    var age = now.getFullYear() - parts[0];
+    var m = (now.getMonth() + 1) - parts[1];
+    if (m < 0 || (m === 0 && now.getDate() < parts[2])) age--;
+    return age;
+  }
+
   document.addEventListener('DOMContentLoaded', function () {
     var form = $('open-account-form');
     if (!form) return;
     var submitBtn = form.querySelector('button[type="submit"]');
     var submitLabel = submitBtn ? submitBtn.textContent : '';
+
+    /* Applicants under 17 need a parent or guardian's approval: show
+       the parental section as soon as the birth date says so. */
+    var dobInput = form.querySelector('input[name="dob"]');
+    var parentalBox = $('parental-fieldset');
+    function updateParental() {
+      if (!dobInput || !parentalBox) return;
+      var age = ageFromDob(dobInput.value);
+      parentalBox.hidden = !(age !== null && age < 17);
+    }
+    if (dobInput) dobInput.addEventListener('change', updateParental);
+    updateParental();
 
     form.addEventListener('submit', function (e) {
       e.preventDefault();
@@ -45,9 +67,25 @@
 
       var payload = {};
       ['first_name', 'last_name', 'dob', 'nationality', 'phone', 'email', 'address',
-        'id_type', 'id_number', 'account_type'].forEach(function (key) {
+        'country', 'id_type', 'id_number', 'account_type'].forEach(function (key) {
         payload[key] = String(data.get(key) || '').trim();
       });
+
+      /* Under 17, the application is rejected without a parent or
+         guardian's approval: name + ticked approval box, both required. */
+      var age = ageFromDob(payload.dob);
+      if (age !== null && age < 17) {
+        var parentName = String(data.get('parent_guardian_name') || '').trim();
+        var parentConsent = data.get('parental_consent') === 'yes';
+        if (!parentName || !parentConsent) {
+          errorText.textContent = t('open_underage_error', 'Les demandeurs de moins de 17 ans ont besoin de l\'approbation d\'un parent ou tuteur : indiquez le nom du parent ou tuteur et cochez la case d\'approbation.');
+          errorBox.classList.add('show');
+          errorBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          return;
+        }
+        payload.parent_guardian_name = parentName;
+        payload.parental_consent = true;
+      }
 
       var pin = String(data.get('pin') || '').trim();
       var pinConfirm = String(data.get('pin_confirm') || '').trim();
@@ -93,6 +131,8 @@
                 message = t('open_error_file_size', 'La photo de la pièce est trop lourde (maximum 5 Mo).');
               } else if (pair.body && pair.body.error === 'invalid_pin') {
                 message = t('open_pin_error', 'Le code PIN doit contenir exactement 4 chiffres et les deux saisies doivent être identiques.');
+              } else if (pair.body && pair.body.error === 'underage_parental_approval') {
+                message = t('open_underage_error', 'Les demandeurs de moins de 17 ans ont besoin de l\'approbation d\'un parent ou tuteur : indiquez le nom du parent ou tuteur et cochez la case d\'approbation.');
               } else if (pair.body && pair.body.error === 'invalid_fields') {
                 message = t('open_error_text', 'Veuillez vérifier votre connexion et réessayer. Si le problème persiste, contactez la banque.');
               }

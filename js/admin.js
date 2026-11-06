@@ -29,7 +29,7 @@
   function formatDate(value) {
     if (!value) return '—';
     try {
-      return new Date(value).toLocaleString(window.__icbLang || 'fr', {
+      return new Date(value).toLocaleString(window.__icbLang || 'en', {
         year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
       });
     } catch (e) { return String(value); }
@@ -39,7 +39,7 @@
     var amount = Number(value);
     if (!Number.isFinite(amount)) return String(value);
     try {
-      return amount.toLocaleString(window.__icbLang || 'fr', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ' + (currency || '');
+      return amount.toLocaleString(window.__icbLang || 'en', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ' + (currency || '');
     } catch (e) { return amount.toFixed(2) + ' ' + (currency || ''); }
   }
   function acctStatusLabel(status) {
@@ -192,6 +192,7 @@
           [t('con_phone_title', 'Téléphone'), app.phone],
           [t('open_email', 'Adresse e-mail'), app.email],
           [t('open_home_address', 'Adresse de résidence'), app.address],
+          [t('open_country', 'Pays de résidence'), app.country || '—'],
           [t('open_id_type', 'Type de pièce'), idTypeLabel(app.id_type)],
           [t('open_id_number', 'Numéro de la pièce'), app.id_number],
           [t('open_acct_type', 'Type de compte souhaité'), accountLabel(app.account_type)],
@@ -200,6 +201,9 @@
           [t('admin_reviewed', 'Dernière décision le'), formatDate(app.reviewed_at)],
           [t('admin_note_label', 'Note interne'), app.admin_note || '—']
         ];
+        if (app.parental_consent) {
+          fields.push([t('admin_parent_approval', 'Approbation parentale'), app.parent_guardian_name || '—']);
+        }
         var dl = $('detail-fields');
         dl.innerHTML = '';
         fields.forEach(function (pair) {
@@ -717,6 +721,7 @@
           [t('admin_acct_col_balance', 'Solde'), formatMoney(acct.balance, acct.currency)],
           [t('admin_deposit_currency_label', 'Devise'), acct.currency],
           [t('admin_col_status', 'Statut'), acctStatusLabel(acct.status)],
+          [t('admin_pin_status', 'Code PIN du client'), acct.pin_set ? t('admin_pin_set', 'Défini') : t('admin_pin_not_set', 'Non défini')],
           [t('admin_acct_created_label', 'Compte créé le'), formatDate(acct.created_at)]
         ];
         var dl = $('acct-fields');
@@ -749,6 +754,7 @@
         show($('acct-tx-empty'), (data.transactions || []).length === 0);
         $('tx-amount').value = '';
         $('tx-note').value = '';
+        $('reset-pin').value = '';
         renderAcctActions(acct.status);
         show($('acct-detail'), true);
         $('acct-detail').scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -920,6 +926,46 @@
           e.message === 'account_on_hold' ? t('admin_acct_tx_hold_error', 'Le compte est bloqué : aucun mouvement n\'est possible.') :
           t('admin_acct_tx_error', 'Le mouvement n\'a pas pu être enregistré.');
         show(err, true);
+      });
+  }
+
+  /* Staff can reset a client's PIN (for example when the client forgot
+     it). The PIN itself is never shown anywhere: it is stored only as a
+     salted hash, so a reset is the only way to change it. */
+  function resetPin() {
+    show($('acct-error'), false);
+    show($('acct-ok'), false);
+    var pinValue = ($('reset-pin').value || '').trim();
+    if (!/^\d{4}$/.test(pinValue)) {
+      var err = $('acct-error');
+      err.textContent = t('admin_pin_invalid', 'Le code PIN doit contenir exactement 4 chiffres.');
+      show(err, true);
+      return;
+    }
+    fetch('/api/admin-reset-pin', {
+      method: 'POST',
+      headers: headers(),
+      body: JSON.stringify({ account_id: state.acctDetailId, pin: pinValue })
+    })
+      .then(function (r) {
+        if (r.status === 401) { authFailed(); throw new Error('auth'); }
+        return r.json().then(function (data) { return { status: r.status, data: data }; });
+      })
+      .then(function (pair) {
+        if (!pair.data.ok) throw new Error(pair.data.error || 'reset');
+        var ok = $('acct-ok');
+        ok.textContent = t('admin_pin_reset_done', 'Code PIN réinitialisé.');
+        show(ok, true);
+        $('reset-pin').value = '';
+        openAcctDetail(state.acctDetailId);
+      })
+      .catch(function (e) {
+        if (e.message === 'auth') return;
+        var errBox = $('acct-error');
+        errBox.textContent = e.message === 'invalid_pin'
+          ? t('admin_pin_invalid', 'Le code PIN doit contenir exactement 4 chiffres.')
+          : t('admin_pin_reset_error', 'Le code PIN n\'a pas pu être réinitialisé.');
+        show(errBox, true);
       });
   }
 
@@ -1224,6 +1270,7 @@
       state.acctDetailId = null;
     });
     $('tx-submit').addEventListener('click', recordTransaction);
+    $('reset-pin-submit').addEventListener('click', resetPin);
     $('add-acct-submit').addEventListener('click', createAccount);
     var trfSearchTimer = null;
     $('trf-search').addEventListener('input', function () {

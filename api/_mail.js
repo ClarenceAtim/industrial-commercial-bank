@@ -167,4 +167,22 @@ async function notifyTransferDecision(transfer, decision, note) {
   return sendMail({ from: process.env.SMTP_USER, to: transfer.sender_email, subject, text });
 }
 
-module.exports = { notifyAdminNewApplication, notifyApplicantDecision, notifyAdminNewTransfer, notifyTransferDecision };
+// Credit alert to the client when staff add funds to their account
+// (a deposit recorded from the dashboard, or an approved deposit
+// request). Carries the amount, the new balance, and the message staff
+// typed with the deposit. Returns true when an email was actually
+// sent, false otherwise (including when email is not configured).
+async function notifyClientCreditAlert(credit) {
+  if (!credit.email) return false;
+  const subject = 'Credit alert — your account ' + credit.account_number;
+  let text =
+    'Dear ' + credit.name + ',\n\n' +
+    'Your account ' + credit.account_number + ' has been credited with ' +
+    credit.amount + ' ' + credit.currency + '.\n\n' +
+    'New balance: ' + credit.balance + ' ' + credit.currency + '.\n';
+  if (credit.message) text += '\nMessage from the bank: ' + credit.message + '\n';
+  text += '\nIndustrial Commercial Bank';
+  return sendMail({ from: process.env.SMTP_USER, to: credit.email, subject, text });
+}
+
+module.exports = { notifyAdminNewApplication, notifyApplicantDecision, notifyAdminNewTransfer, notifyTransferDecision, notifyClientCreditAlert };

@@ -39,7 +39,7 @@
   function formatDate(value) {
     if (!value) return '—';
     try {
-      return new Date(value).toLocaleString(window.__icbLang || 'fr', {
+      return new Date(value).toLocaleString(window.__icbLang || 'en', {
         year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
       });
     } catch (e) { return String(value); }
@@ -49,7 +49,7 @@
     var amount = Number(value);
     if (!Number.isFinite(amount)) return String(value);
     try {
-      return amount.toLocaleString(window.__icbLang || 'fr', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ' + (currency || '');
+      return amount.toLocaleString(window.__icbLang || 'en', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ' + (currency || '');
     } catch (e) { return amount.toFixed(2) + ' ' + (currency || ''); }
   }
   function statusLabel(status) {
@@ -170,6 +170,20 @@
         });
         show($('client-tx-table'), (data.transactions || []).length > 0);
         show($('client-tx-empty'), (data.transactions || []).length === 0);
+        /* Credit alert: the latest deposit, with the message the bank
+           wrote when it added the funds — the same message that goes
+           out by email. Shown only when the bank left a message. */
+        var latestCredit = null;
+        (data.transactions || []).forEach(function (tx) {
+          if (tx.type === 'deposit' && tx.note && !latestCredit) latestCredit = tx;
+        });
+        if (latestCredit) {
+          $('client-alert-text').textContent =
+            '+ ' + formatMoney(latestCredit.amount, acct.currency) + ' — ' + latestCredit.note;
+          show($('client-alert'), true);
+        } else {
+          show($('client-alert'), false);
+        }
         var trfBody = $('client-trf-rows');
         trfBody.innerHTML = '';
         (data.transfers || []).forEach(function (trf) {
