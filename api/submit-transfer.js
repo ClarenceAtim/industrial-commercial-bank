@@ -7,12 +7,15 @@
 // the dashboard, where manual banks are labelled as entered manually.
 // Inserts a row with status 'pending' and a unique reference
 // TRF-YYYY-XXXXXX. Returns { ok: true, reference }.
-// Required environment variable: DATABASE_URL.
+// Required environment variables: DATABASE_URL, ADMIN_SECRET.
+// Authorization: Bearer <client token> required — only a signed-in
+// client may file a transfer request, against their own account.
 // Optional email notice: see _mail.js (inert until SMTP env vars are set).
 // Never logs or returns sensitive data.
 const { getPool } = require('./_db');
 const { notifyAdminNewTransfer } = require('./_mail');
 const { validAmount, validCurrency } = require('./_money');
+const { clientAccountId } = require('./_auth');
 
 // Top destination banks, by region. Bank and country names are proper
 // nouns and are shown as-is in every language.
@@ -81,6 +84,13 @@ module.exports = async function handler(req, res) {
     return res.status(405).json({ ok: false, error: 'method_not_allowed' });
   }
 
+  // Only a signed-in client may file a transfer request: the page
+  // redirect alone is not enforcement.
+  const accountId = clientAccountId(req);
+  if (!accountId) {
+    return res.status(401).json({ ok: false, error: 'unauthorized' });
+  }
+
   const body = req.body || {};
   // A manually entered bank (the client picked "My bank is not listed"):
   // the name and country come from the client, the region from the tab they
@@ -146,6 +156,16 @@ module.exports = async function handler(req, res) {
 
   const client = await pool.connect();
   try {
+    // The request must be filed against the signed-in client's own
+    // account. The account-number field is prefilled and locked for a
+    // signed-in client, but the backend is the enforcement point.
+    const acct = await client.query(
+      'SELECT account_number FROM accounts WHERE id = $1',
+      [accountId]
+    );
+    if (acct.rows.length === 0 || acct.rows[0].account_number !== transfer.account_number) {
+      return res.status(401).json({ ok: false, error: 'unauthorized' });
+    }
     // The is_manual_bank column arrives with the 2026-11-05 client-portal
     // migration (sql/migrations/2026-11-05-client-portal.sql). Until that
     // migration has run, manual-bank requests still insert — the flag is

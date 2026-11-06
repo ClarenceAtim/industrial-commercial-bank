@@ -59,6 +59,21 @@
   }
   function $(id) { return document.getElementById(id); }
 
+  /* The signed-in client's token (same key js/client.js uses). Without
+     it the backend refuses the request with 401. */
+  function clientToken() {
+    try { return sessionStorage.getItem('icb-client-token'); } catch (e) { return null; }
+  }
+  /* Session gone (expired or signed out elsewhere): clear it and send
+     the client back to sign in, then return to this page. */
+  function sessionExpired() {
+    try {
+      sessionStorage.removeItem('icb-client-token');
+      sessionStorage.setItem('icb-client-expired', 'client_session_expired');
+    } catch (e) {}
+    window.location.href = 'client-login.html?next=transfers.html';
+  }
+
   function renderBanks(region) {
     currentRegion = region;
     document.querySelectorAll('.region-tab').forEach(function (btn) {
@@ -191,13 +206,17 @@
 
       fetch('/api/submit-transfer', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + (clientToken() || '')
+        },
         body: JSON.stringify(payload)
       })
         .then(function (r) {
           return r.json().then(function (body) { return { status: r.status, body: body }; });
         })
         .then(function (pair) {
+          if (pair.status === 401) { sessionExpired(); return; }
           if (submitBtn) {
             submitBtn.disabled = false;
             submitBtn.textContent = submitLabel;
