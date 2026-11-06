@@ -50,6 +50,7 @@
         <button type="button" class="admin-tab active" id="tab-applications" data-i18n="admin_tab_applications">Demandes</button>
         <button type="button" class="admin-tab" id="tab-accounts" data-i18n="admin_tab_accounts">Comptes clients</button>
         <button type="button" class="admin-tab" id="tab-transfers" data-i18n="admin_tab_transfers">Virements</button>
+        <button type="button" class="admin-tab" id="tab-deposits" data-i18n="admin_tab_deposits">Dépôts</button>
       </div>
 
       <div id="view-applications">
@@ -121,7 +122,7 @@
         <div class="field"><label data-i18n="admin_note_label" for="detail-note">Note interne</label><textarea id="detail-note" rows="3" data-i18n-placeholder="admin_note_placeholder" placeholder="Note pour le dossier (facultatif)"></textarea></div>
         <div id="deposit-fields" hidden>
           <div class="field"><label data-i18n="admin_deposit_amount_label" for="deposit-amount">Montant du dépôt</label><input type="number" id="deposit-amount" min="0" step="0.01" inputmode="decimal"></div>
-          <div class="field"><label data-i18n="admin_deposit_currency_label" for="deposit-currency">Devise</label><input type="text" id="deposit-currency" value="XAF" maxlength="3"></div>
+          <div class="field"><label data-i18n="admin_deposit_currency_label" for="deposit-currency">Devise</label><input type="text" id="deposit-currency" value="USD" maxlength="3"></div>
         </div>
         <div id="detail-account" hidden>
           <h3 data-i18n="admin_accounts_title">Comptes clients</h3>
@@ -159,7 +160,7 @@
           <div class="tx-form">
             <div class="field"><label data-i18n="admin_acct_add_ref" for="add-acct-ref">Référence de la demande</label><input type="text" id="add-acct-ref" maxlength="30"></div>
             <div class="field"><label data-i18n="admin_acct_add_balance" for="add-acct-balance">Solde initial (facultatif)</label><input type="number" id="add-acct-balance" min="0" step="0.01" inputmode="decimal"></div>
-            <div class="field"><label data-i18n="admin_deposit_currency_label" for="add-acct-currency">Devise</label><input type="text" id="add-acct-currency" value="XAF" maxlength="3"></div>
+            <div class="field"><label data-i18n="admin_deposit_currency_label" for="add-acct-currency">Devise</label><input type="text" id="add-acct-currency" value="USD" maxlength="3"></div>
             <button class="btn" id="add-acct-submit" type="button" data-i18n="admin_acct_add_submit">Créer le compte</button>
           </div>
           <p class="admin-error" id="add-acct-error" hidden></p>
@@ -274,6 +275,58 @@
           <div class="detail-actions" id="trf-actions"></div>
           <p class="admin-error" id="trf-error" hidden></p>
           <p class="admin-ok" id="trf-ok" hidden></p>
+        </div>
+      </div>
+      <div id="view-deposits" hidden>
+        <div class="stat-grid" id="dep-stats">
+          <div class="stat-card"><span class="stat-num" id="dep-stat-total">—</span><span class="stat-label" data-i18n="admin_stat_total">Total</span></div>
+          <div class="stat-card"><span class="stat-num" id="dep-stat-pending">—</span><span class="stat-label" data-i18n="admin_stat_pending">En attente</span></div>
+          <div class="stat-card"><span class="stat-num" id="dep-stat-approved">—</span><span class="stat-label" data-i18n="admin_trf_stat_approved">Approuvés</span></div>
+          <div class="stat-card"><span class="stat-num" id="dep-stat-rejected">—</span><span class="stat-label" data-i18n="admin_stat_rejected">Refusées</span></div>
+        </div>
+
+        <div class="admin-toolbar">
+          <input type="search" id="dep-search" data-i18n-placeholder="admin_acct_search_placeholder" placeholder="Rechercher (nom, numéro de compte, référence)…">
+          <select id="dep-filter-status" aria-label="Statut">
+            <option value="" data-i18n="admin_filter_all">Tous les statuts</option>
+            <option value="pending" data-i18n="admin_status_pending">En attente</option>
+            <option value="approved" data-i18n="admin_status_approved">Approuvée</option>
+            <option value="rejected" data-i18n="admin_status_rejected">Refusée</option>
+          </select>
+        </div>
+
+        <p class="admin-error" id="dep-load-error" hidden></p>
+        <p id="dep-loading" data-i18n="admin_loading">Chargement…</p>
+        <p id="dep-empty" hidden data-i18n="admin_dep_empty">Aucune demande de dépôt pour le moment.</p>
+
+        <div class="table-wrap">
+          <table id="dep-table" hidden>
+            <thead><tr>
+              <th><button type="button" class="dep-sort-btn" data-sort="reference" data-i18n="admin_col_ref">Référence</button></th>
+              <th data-i18n="admin_dep_col_client">Client</th>
+              <th data-i18n="admin_acct_col_number">Numéro de compte</th>
+              <th><button type="button" class="dep-sort-btn" data-sort="amount" data-i18n="admin_trf_col_amount">Montant</button></th>
+              <th data-i18n="admin_col_status">Statut</th>
+              <th><button type="button" class="dep-sort-btn" data-sort="created_at" data-i18n="admin_col_date">Date</button></th>
+            </tr></thead>
+            <tbody id="dep-rows"></tbody>
+          </table>
+        </div>
+
+        <div class="pager" id="dep-pager" hidden>
+          <button class="btn btn-outline" id="dep-prev" type="button" data-i18n="admin_page_prev">← Précédent</button>
+          <span id="dep-page-label"></span>
+          <button class="btn btn-outline" id="dep-next" type="button" data-i18n="admin_page_next">Suivant →</button>
+        </div>
+
+        <div id="dep-detail" hidden>
+          <button class="btn btn-outline" id="dep-back" type="button" data-i18n="admin_back">← Retour à la liste</button>
+          <h2 id="dep-ref"></h2>
+          <dl class="detail-grid" id="dep-fields"></dl>
+          <div class="field"><label data-i18n="admin_note_label" for="dep-note">Note interne</label><textarea id="dep-note" rows="3" data-i18n-placeholder="admin_note_placeholder" placeholder="Note pour le dossier (facultatif)"></textarea></div>
+          <div class="detail-actions" id="dep-actions"></div>
+          <p class="admin-error" id="dep-error" hidden></p>
+          <p class="admin-ok" id="dep-ok" hidden></p>
         </div>
       </div>
     </div>

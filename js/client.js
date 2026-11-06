@@ -5,7 +5,8 @@
    no password to remember. The 2-hour token lives in sessionStorage only.
    This page only ever shows the signed-in customer's own balance,
    movements and transfer requests, and lets them confirm a pending
-   transfer request; the bank still reviews it afterwards. No money
+   transfer request or ask the bank to record a deposit; the bank
+   still reviews it afterwards. No money
    ever moves through this site.
    Gating: the service pages (transfers, loans, personal, business,
    digital) carry data-gated on <body>. Without a client token the
@@ -197,6 +198,22 @@
         trfBody.querySelectorAll('[data-approve]').forEach(function (btn) {
           btn.addEventListener('click', function () { approveTransfer(btn); });
         });
+        var depBody = $('client-dep-rows');
+        depBody.innerHTML = '';
+        (data.deposits || []).forEach(function (dep) {
+          var tr = document.createElement('tr');
+          tr.innerHTML =
+            '<td>' + escapeHtml(dep.reference) + '</td>' +
+            '<td>' + escapeHtml(formatMoney(dep.amount, dep.currency)) + '</td>' +
+            '<td>' + escapeHtml(depositMethodLabel(dep.method)) + '</td>' +
+            '<td><span class="status-pill status-' + escapeHtml(dep.status) + '">' + escapeHtml(statusLabel(dep.status)) + '</span></td>' +
+            '<td>' + escapeHtml(formatDate(dep.created_at)) + '</td>';
+          depBody.appendChild(tr);
+        });
+        show($('client-dep-table'), (data.deposits || []).length > 0);
+        show($('client-dep-empty'), (data.deposits || []).length === 0);
+        var depCurrency = $('dep-currency');
+        if (depCurrency && acct.currency) depCurrency.value = acct.currency;
         show($('client-view'), true);
       })
       .catch(function (e) {
@@ -205,6 +222,56 @@
         var err = $('client-error');
         err.textContent = t('client_load_error', 'Impossible de charger votre compte.');
         show(err, true);
+      });
+  }
+
+  function depositMethodLabel(method) {
+    return {
+      bank_transfer: t('client_deposit_method_bank', 'Virement bancaire'),
+      cash: t('client_deposit_method_cash', 'Espèces en agence'),
+      mobile_money: t('client_deposit_method_mobile', 'Mobile money'),
+      other: t('client_deposit_method_other', 'Autre')
+    }[method] || method;
+  }
+
+  function requestDeposit() {
+    var form = $('client-deposit-form');
+    var amount = parseFloat($('dep-amount').value);
+    show($('client-error'), false);
+    show($('client-ok'), false);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      var err = $('client-error');
+      err.textContent = t('client_deposit_error', 'La demande n\'a pas pu être envoyée.');
+      show(err, true);
+      return;
+    }
+    fetch('/api/client-deposit-request', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token() },
+      body: JSON.stringify({
+        amount: amount,
+        currency: $('dep-currency').value,
+        method: $('dep-method').value,
+        note: $('dep-note').value.trim()
+      })
+    })
+      .then(function (r) {
+        if (r.status === 401) { signOut('client_session_expired'); throw new Error('auth'); }
+        return r.json().then(function (data) { return { status: r.status, data: data }; });
+      })
+      .then(function (pair) {
+        if (!pair.data.ok) throw new Error(pair.data.error || 'deposit');
+        var ok = $('client-ok');
+        ok.textContent = t('client_deposit_done', 'Demande envoyée. La banque l\'examine et ajoutera le montant à votre solde une fois approuvée.');
+        show(ok, true);
+        form.reset();
+        loadAccount();
+      })
+      .catch(function (e) {
+        if (e.message === 'auth') return;
+        var errBox = $('client-error');
+        errBox.textContent = t('client_deposit_error', 'La demande n\'a pas pu être envoyée.');
+        show(errBox, true);
       });
   }
 
@@ -288,6 +355,13 @@
     if ($('client-view')) {
       if (!token()) { window.location.href = 'client-login.html'; return; }
       $('client-logout').addEventListener('click', function () { signOut(); });
+      var depositForm = $('client-deposit-form');
+      if (depositForm) {
+        depositForm.addEventListener('submit', function (e) {
+          e.preventDefault();
+          requestDeposit();
+        });
+      }
       loadAccount();
       document.addEventListener('icb-lang', loadAccount);
     }

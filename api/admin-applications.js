@@ -230,9 +230,9 @@ async function handleApplicationReview(req, res) {
     return res.status(400).json({ ok: false, error: 'invalid_fields' });
   }
   // Confirming a deposit opens the account, so the received amount is
-  // required (currency defaults to XAF when not given).
+  // required (currency defaults to USD when not given).
   let depositAmount = null;
-  let depositCurrency = 'XAF';
+  let depositCurrency = 'USD';
   if (decision === 'deposit_received') {
     depositAmount = validAmount(body.amount);
     depositCurrency = validCurrency(body.currency);

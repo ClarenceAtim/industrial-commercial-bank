@@ -181,7 +181,7 @@
         payload[key] = String(data.get(key) || '').trim();
       });
       payload.amount = amount;
-      payload.currency = String(data.get('currency') || 'XAF').trim().toUpperCase() || 'XAF';
+      payload.currency = String(data.get('currency') || 'USD').trim().toUpperCase() || 'USD';
       payload.manual_bank = manualBank;
 
       if (submitBtn) {
@@ -208,7 +208,7 @@
             $('trf-result').classList.add('show');
             $('trf-result').scrollIntoView({ behavior: 'smooth', block: 'center' });
             form.reset();
-            $('currency').value = 'XAF';
+            $('currency').value = 'USD';
             clearSelection();
           } else {
             var message = t('trf_error_text', 'Veuillez vérifier votre connexion et réessayer. Si le problème persiste, contactez la banque.');

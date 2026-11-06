@@ -16,7 +16,7 @@ function validAmount(value) {
 
 function validCurrency(value) {
   const text = clean(value).toUpperCase();
-  if (text === '') return 'XAF';
+  if (text === '') return 'USD';
   if (!/^[A-Z]{3}$/.test(text)) return null;
   return text;
 }

@@ -4,6 +4,11 @@
 //   /api/admin-account?op=detail      one account (GET) / delete it (DELETE)
 //   /api/admin-transaction?op=transaction  record a deposit or withdrawal
 //   /api/admin-hold?op=hold           put an account on hold / release it
+//   /api/admin-deposits?op=deposits   list client deposit requests (GET)
+//   /api/admin-deposit-review?op=deposit-review  approve or refuse a
+//                                     deposit request; approving credits
+//                                     the account balance and records a
+//                                     deposit transaction
 // RECORD-KEEPING ONLY: this site is not real banking and no money
 // ever moves through it. Authorization: Bearer <token> (see
 // _auth.js). Required environment variable: DATABASE_URL.
@@ -465,10 +470,208 @@ async function handleHold(req, res) {
   }
 }
 
+async function handleDepositsList(req, res) {
+  if (req.method !== 'GET') {
+    res.setHeader('Allow', 'GET');
+    return res.status(405).json({ ok: false, error: 'method_not_allowed' });
+  }
+  if (!requireAdmin(req, res)) return;
+
+  const q = req.query || {};
+  const status = ['pending', 'approved', 'rejected'].indexOf(clean(q.status)) !== -1 ? clean(q.status) : null;
+  const search = clean(q.search);
+  const sort = ['created_at', 'reference', 'amount'].indexOf(clean(q.sort)) !== -1 ? clean(q.sort) : 'created_at';
+  const order = clean(q.order) === 'asc' ? 'ASC' : 'DESC';
+  const perPage = Math.min(Math.max(parseInt(clean(q.per_page), 10) || 20, 1), 100);
+  const page = Math.max(parseInt(clean(q.page), 10) || 1, 1);
+
+  let pool;
+  try {
+    pool = getPool();
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: 'server_error' });
+  }
+
+  try {
+    // The deposit_requests table arrives with the 2026-11-06 migration
+    // (sql/migrations/2026-11-06-deposit-requests.sql). Until it has run,
+    // the tab reports that instead of failing.
+    const probe = await pool.query(
+      "SELECT 1 FROM information_schema.tables WHERE table_name = 'deposit_requests'"
+    );
+    if (probe.rows.length === 0) {
+      return res.status(200).json({
+        ok: true,
+        migration_required: true,
+        stats: { total: 0, pending: 0, approved: 0, rejected: 0 },
+        deposits: [],
+        page: 1,
+        per_page: perPage,
+        total_count: 0,
+        total_pages: 1
+      });
+    }
+    const fromSql =
+      'FROM deposit_requests d ' +
+      'JOIN accounts a ON a.id = d.account_id ' +
+      'JOIN applications ap ON ap.id = a.application_id ';
+    const where = [];
+    const params = [];
+    if (status) { params.push(status); where.push('d.status = $' + params.length); }
+    if (search) {
+      params.push('%' + search.replace(/[%_]/g, '') + '%');
+      where.push("(d.reference ILIKE $" + params.length +
+        " OR a.account_number ILIKE $" + params.length +
+        " OR ap.first_name ILIKE $" + params.length +
+        " OR ap.last_name ILIKE $" + params.length +
+        " OR (ap.first_name || ' ' || ap.last_name) ILIKE $" + params.length + ')');
+    }
+    const whereSql = where.length ? 'WHERE ' + where.join(' AND ') : '';
+    const statsResult = await pool.query(
+      'SELECT ' +
+        'COUNT(*)::int AS total, ' +
+        "COUNT(*) FILTER (WHERE d.status = 'pending')::int AS pending, " +
+        "COUNT(*) FILTER (WHERE d.status = 'approved')::int AS approved, " +
+        "COUNT(*) FILTER (WHERE d.status = 'rejected')::int AS rejected " +
+        fromSql
+    );
+    const countResult = await pool.query(
+      'SELECT COUNT(*)::int AS total ' + fromSql + whereSql,
+      params
+    );
+    const totalCount = countResult.rows[0].total;
+    const totalPages = Math.max(Math.ceil(totalCount / perPage), 1);
+    const safePage = Math.min(page, totalPages);
+    const listParams = params.slice();
+    listParams.push(perPage);
+    listParams.push((safePage - 1) * perPage);
+    const sortColumn = sort === 'amount' ? 'd.amount' : sort === 'reference' ? 'd.reference' : 'd.created_at';
+    const listResult = await pool.query(
+      'SELECT d.id, d.reference, d.amount, d.currency, d.method, d.note, d.status, ' +
+        'd.admin_note, d.created_at, d.reviewed_at, a.id AS account_id, a.account_number, ' +
+        'a.currency AS account_currency, a.balance, ap.first_name, ap.last_name, ap.email ' +
+        fromSql + whereSql +
+        ' ORDER BY ' + sortColumn + ' ' + order + ', d.id DESC' +
+        ' LIMIT $' + (listParams.length - 1) + ' OFFSET $' + listParams.length,
+      listParams
+    );
+    return res.status(200).json({
+      ok: true,
+      stats: statsResult.rows[0],
+      deposits: listResult.rows,
+      page: safePage,
+      per_page: perPage,
+      total_count: totalCount,
+      total_pages: totalPages
+    });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: 'server_error' });
+  }
+}
+
+async function handleDepositReview(req, res) {
+  if (req.method !== 'POST') {
+    res.setHeader('Allow', 'POST');
+    return res.status(405).json({ ok: false, error: 'method_not_allowed' });
+  }
+  if (!requireAdmin(req, res)) return;
+
+  const body = req.body || {};
+  const id = parseInt(body.id, 10);
+  const decision = typeof body.decision === 'string' ? body.decision.trim() : '';
+  const note = typeof body.note === 'string' ? body.note.trim().slice(0, 1000) : '';
+  if (!id || (decision !== 'approved' && decision !== 'rejected')) {
+    return res.status(400).json({ ok: false, error: 'invalid_fields' });
+  }
+
+  let pool;
+  try {
+    pool = getPool();
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: 'server_error' });
+  }
+
+  const client = await pool.connect();
+  try {
+    const probe = await client.query(
+      "SELECT 1 FROM information_schema.tables WHERE table_name = 'deposit_requests'"
+    );
+    if (probe.rows.length === 0) {
+      return res.status(500).json({
+        ok: false,
+        error: 'migration_required',
+        message: 'The deposit_requests table is missing: run sql/migrations/2026-11-06-deposit-requests.sql in the Neon SQL editor first.'
+      });
+    }
+    await client.query('BEGIN');
+    const found = await client.query(
+      'SELECT d.id, d.account_id, d.reference, d.amount, d.currency, d.status, ' +
+        'a.application_id, a.currency AS account_currency, a.balance, a.status AS account_status ' +
+        'FROM deposit_requests d JOIN accounts a ON a.id = d.account_id ' +
+        'WHERE d.id = $1 FOR UPDATE OF d',
+      [id]
+    );
+    if (found.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ ok: false, error: 'not_found' });
+    }
+    const request = found.rows[0];
+    if (request.status !== 'pending') {
+      await client.query('ROLLBACK');
+      return res.status(409).json({ ok: false, error: 'invalid_transition' });
+    }
+    if (request.account_status !== 'active') {
+      await client.query('ROLLBACK');
+      return res.status(409).json({ ok: false, error: 'account_on_hold' });
+    }
+    // A deposit is only credited when the requested currency matches the
+    // account currency; otherwise staff record the deposit manually from
+    // the Client accounts tab instead of approving here.
+    if (decision === 'approved' && request.currency !== request.account_currency) {
+      await client.query('ROLLBACK');
+      return res.status(409).json({ ok: false, error: 'currency_mismatch' });
+    }
+    let balance = request.balance;
+    if (decision === 'approved') {
+      await client.query(
+        'INSERT INTO transactions (account_id, type, amount, note) VALUES ($1, $2, $3, $4)',
+        [request.account_id, 'deposit', request.amount, 'Deposit request ' + request.reference + (note ? ' — ' + note : '')]
+      );
+      const updated = await client.query(
+        'UPDATE accounts SET balance = balance + $2, updated_at = now() WHERE id = $1 RETURNING balance',
+        [request.account_id, request.amount]
+      );
+      balance = updated.rows[0].balance;
+      await client.query(
+        'INSERT INTO application_events (application_id, action, note) VALUES ($1, $2, $3)',
+        [request.application_id, 'deposit_recorded', request.amount + ' ' + request.currency + ' — ' + request.reference]
+      );
+    }
+    await client.query(
+      'UPDATE deposit_requests SET status = $1, admin_note = $2, reviewed_at = now() WHERE id = $3',
+      [decision, note || null, id]
+    );
+    await client.query('COMMIT');
+    return res.status(200).json({
+      ok: true,
+      status: decision,
+      balance: balance,
+      currency: request.account_currency
+    });
+  } catch (e) {
+    try { await client.query('ROLLBACK'); } catch (ignored) {}
+    return res.status(500).json({ ok: false, error: 'server_error' });
+  } finally {
+    client.release();
+  }
+}
+
 module.exports = async function handler(req, res) {
   const op = req.query && typeof req.query.op === 'string' ? req.query.op : '';
   if (op === 'detail') return handleAccountDetail(req, res);
   if (op === 'transaction') return handleTransaction(req, res);
   if (op === 'hold') return handleHold(req, res);
+  if (op === 'deposits') return handleDepositsList(req, res);
+  if (op === 'deposit-review') return handleDepositReview(req, res);
   return handleAccounts(req, res);
 };

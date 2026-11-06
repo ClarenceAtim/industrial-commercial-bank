@@ -101,7 +101,7 @@ async function notifyApplicantDecision(application, decision, note, extra) {
       'Dear ' + name + ',\n\n' +
       'Thank you: we have received your initial deposit for application ' + ref + '. Your account is now active.\n';
     if (extra && extra.amount) {
-      text += '\nDeposit received: ' + extra.amount + ' ' + (extra.currency || 'XAF') + '\n';
+      text += '\nDeposit received: ' + extra.amount + ' ' + (extra.currency || 'USD') + '\n';
     }
     if (extra && extra.account_number) {
       text += 'Your account number: ' + extra.account_number + '\n';

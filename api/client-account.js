@@ -5,13 +5,19 @@
 //                                     application reference + email, no password)
 //   /api/client-transfer-approve?op=approve  a customer confirms one of their
 //                                     own pending transfer requests
+//   /api/client-deposit-request?op=request-deposit  a customer asks the bank
+//                                     to record a deposit of an amount they type
 // Authorization: Bearer <client token> (see _auth.js — 2-hour token
 // issued by /api/client-login). RECORD-KEEPING ONLY: no money ever
-// moves through this site. Required environment variables:
+// moves through this site. A deposit request only asks the bank to
+// record a deposit; staff approve it in the dashboard and only then
+// does the balance change. Required environment variables:
 // DATABASE_URL, ADMIN_SECRET.
 const { getPool } = require('./_db');
 const { clientAccountId } = require('./_auth');
 const { issueClientToken } = require('./_auth');
+const { validAmount, validCurrency } = require('./_money');
+const crypto = require('crypto');
 
 function clean(value) {
   return typeof value === 'string' ? value.trim() : '';
@@ -74,6 +80,20 @@ async function handleClientAccount(req, res) {
         'FROM transfer_requests WHERE account_number = $1 ORDER BY created_at DESC, id DESC LIMIT 50',
       [account.account_number]
     );
+    // Deposit requests arrive with the 2026-11-06 migration
+    // (sql/migrations/2026-11-06-deposit-requests.sql). Until it has run,
+    // the list is simply empty.
+    let deposits = [];
+    try {
+      const depResult = await pool.query(
+        'SELECT id, reference, amount, currency, method, status, created_at ' +
+          'FROM deposit_requests WHERE account_id = $1 ORDER BY created_at DESC, id DESC LIMIT 50',
+        [accountId]
+      );
+      deposits = depResult.rows;
+    } catch (e) {
+      deposits = [];
+    }
     return res.status(200).json({
       ok: true,
       account: {
@@ -88,7 +108,8 @@ async function handleClientAccount(req, res) {
         account_type: account.account_type
       },
       transactions: txResult.rows,
-      transfers: trfResult.rows
+      transfers: trfResult.rows,
+      deposits: deposits
     });
   } catch (e) {
     return res.status(500).json({ ok: false, error: 'server_error' });
@@ -216,9 +237,91 @@ async function handleClientApprove(req, res) {
   }
 }
 
+const DEPOSIT_METHODS = ['bank_transfer', 'cash', 'mobile_money', 'other'];
+
+function makeDepositReference() {
+  const year = new Date().getFullYear();
+  const digits = String(Math.floor(100000 + Math.random() * 900000));
+  return 'DEP-' + year + '-' + digits;
+}
+
+async function handleClientDepositRequest(req, res) {
+  if (req.method !== 'POST') {
+    res.setHeader('Allow', 'POST');
+    return res.status(405).json({ ok: false, error: 'method_not_allowed' });
+  }
+  const accountId = clientAccountId(req);
+  if (!accountId) {
+    return res.status(401).json({ ok: false, error: 'unauthorized' });
+  }
+
+  const body = req.body || {};
+  const amount = validAmount(body.amount);
+  const currency = validCurrency(body.currency);
+  const method = typeof body.method === 'string' ? body.method.trim() : '';
+  const note = typeof body.note === 'string' ? body.note.trim().slice(0, 1000) : '';
+  if (!amount || !currency || DEPOSIT_METHODS.indexOf(method) === -1) {
+    return res.status(400).json({ ok: false, error: 'invalid_fields' });
+  }
+
+  let pool;
+  try {
+    pool = getPool();
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: 'server_error' });
+  }
+
+  const client = await pool.connect();
+  try {
+    // The deposit_requests table arrives with the 2026-11-06 migration
+    // (sql/migrations/2026-11-06-deposit-requests.sql). Until it has run,
+    // fail with a clear error instead of recording anything half-finished.
+    const probe = await client.query(
+      "SELECT 1 FROM information_schema.tables WHERE table_name = 'deposit_requests'"
+    );
+    if (probe.rows.length === 0) {
+      return res.status(500).json({
+        ok: false,
+        error: 'migration_required',
+        message: 'The deposit_requests table is missing: run sql/migrations/2026-11-06-deposit-requests.sql in the Neon SQL editor first.'
+      });
+    }
+    const accountResult = await client.query(
+      "SELECT id FROM accounts WHERE id = $1 AND status = 'active'",
+      [accountId]
+    );
+    if (accountResult.rows.length === 0) {
+      return res.status(401).json({ ok: false, error: 'unauthorized' });
+    }
+    let reference = null;
+    let inserted = null;
+    for (let attempt = 0; attempt < 5 && !inserted; attempt++) {
+      reference = makeDepositReference();
+      try {
+        const result = await client.query(
+          'INSERT INTO deposit_requests (account_id, reference, amount, currency, method, note, status) ' +
+            'VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, created_at',
+          [accountId, reference, amount, currency, method, note || null, 'pending']
+        );
+        inserted = result.rows[0];
+      } catch (e) {
+        if (e.code === '23505') continue; // reference collision: try another one
+        throw e;
+      }
+    }
+    if (!inserted) throw new Error('could not allocate a reference');
+    return res.status(200).json({ ok: true, reference: reference, status: 'pending' });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: 'server_error' });
+  } finally {
+    client.release();
+  }
+}
+
 module.exports = async function handler(req, res) {
   const op = req.query && typeof req.query.op === 'string' ? req.query.op : '';
   if (op === 'login') return handleClientLogin(req, res);
   if (op === 'approve') return handleClientApprove(req, res);
+  if (op === 'request-deposit') return handleClientDepositRequest(req, res);
   return handleClientAccount(req, res);
 };
