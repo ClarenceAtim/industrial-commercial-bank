@@ -274,10 +274,11 @@ async function handleApplicationReview(req, res) {
   const client = await pool.connect();
   try {
     // The PIN columns arrive with the 2026-11-06 migration
-    // (sql/migrations/2026-11-06-client-pin-login.sql). A deposit
-    // confirmation opens the account, and an account needs a PIN, so
-    // fail with a clear error until the migration has run.
-    if (decision === 'deposit_received' && !(await pinColumnsPresent(client))) {
+    // (sql/migrations/2026-11-06-client-pin-login.sql). Approving an
+    // application now opens the account too, so both decisions that
+    // create an account fail with a clear error until the migration
+    // has run.
+    if ((decision === 'deposit_received' || decision === 'approved') && !(await pinColumnsPresent(client))) {
       return res.status(500).json({
         ok: false,
         error: 'migration_required',
@@ -287,7 +288,7 @@ async function handleApplicationReview(req, res) {
     await client.query('BEGIN');
     const current = await client.query(
       'SELECT id, reference, first_name, last_name, email, status' +
-        (decision === 'deposit_received' ? ', pin_hash' : '') +
+        (decision === 'deposit_received' || decision === 'approved' ? ', pin_hash' : '') +
         ' FROM applications WHERE id = $1 FOR UPDATE',
       [id]
     );
@@ -310,47 +311,110 @@ async function handleApplicationReview(req, res) {
       [id, decision, note || null]
     );
     let accountNumber = null;
-    if (decision === 'deposit_received') {
+    let newBalance = null;
+    if (decision === 'approved') {
+      // Approving opens the account at once, so the client can sign in
+      // before any deposit and sees a zero balance. The account keeps
+      // the PIN the client chose when they applied; an application with
+      // no PIN yet opens with no PIN, and staff set one with Reset PIN.
       const existing = await client.query(
-        'SELECT id FROM accounts WHERE application_id = $1',
+        'SELECT id, account_number FROM accounts WHERE application_id = $1',
         [id]
       );
       if (existing.rows.length > 0) {
-        await client.query('ROLLBACK');
-        return res.status(409).json({ ok: false, error: 'account_exists' });
-      }
-      // The account needs a PIN for the client to sign in: the PIN staff
-      // just set wins; otherwise the PIN the client chose when they
-      // applied is copied over. With neither, the account cannot open.
-      let accountPinHash = null;
-      if (depositPin) {
-        accountPinHash = hashPin(depositPin);
-      } else if (row.pin_hash) {
-        accountPinHash = row.pin_hash;
+        accountNumber = existing.rows[0].account_number;
       } else {
-        await client.query('ROLLBACK');
-        return res.status(400).json({ ok: false, error: 'pin_required' });
-      }
-      let account = null;
-      for (let attempt = 0; attempt < 5 && !account; attempt++) {
-        accountNumber = makeAccountNumber();
-        try {
-          const inserted = await client.query(
-            'INSERT INTO accounts (application_id, account_number, currency, balance, status, pin_hash) ' +
-              'VALUES ($1, $2, $3, $4, $5, $6) RETURNING id',
-            [id, accountNumber, depositCurrency, depositAmount, 'active', accountPinHash]
-          );
-          account = inserted.rows[0];
-        } catch (e) {
-          if (e.code === '23505') continue; // account number collision: try another one
-          throw e;
+        let account = null;
+        for (let attempt = 0; attempt < 5 && !account; attempt++) {
+          accountNumber = makeAccountNumber();
+          try {
+            const inserted = await client.query(
+              'INSERT INTO accounts (application_id, account_number, currency, balance, status, pin_hash) ' +
+                'VALUES ($1, $2, $3, $4, $5, $6) RETURNING id',
+              [id, accountNumber, 'USD', 0, 'active', row.pin_hash || null]
+            );
+            account = inserted.rows[0];
+          } catch (e) {
+            if (e.code === '23505') continue; // account number collision: try another one
+            throw e;
+          }
         }
+        if (!account) throw new Error('could not allocate an account number');
+        // No transaction row for the zero opening balance: the
+        // transactions table requires an amount above zero.
+        await client.query(
+          'INSERT INTO application_events (application_id, action, note) VALUES ($1, $2, $3)',
+          [id, 'account_created', note || null]
+        );
       }
-      if (!account) throw new Error('could not allocate an account number');
-      await client.query(
-        'INSERT INTO transactions (account_id, type, amount, note) VALUES ($1, $2, $3, $4)',
-        [account.id, 'deposit', depositAmount, note || null]
+    }
+    if (decision === 'deposit_received') {
+      const existing = await client.query(
+        'SELECT id, account_number, balance, pin_hash FROM accounts WHERE application_id = $1',
+        [id]
       );
+      if (existing.rows.length > 0) {
+        // The account already exists (created at approval): credit it
+        // instead of failing. Staff may set the PIN here; it wins over
+        // any PIN already on the account.
+        const acct = existing.rows[0];
+        accountNumber = acct.account_number;
+        let accountPinHash = acct.pin_hash;
+        if (depositPin) accountPinHash = hashPin(depositPin);
+        if (!accountPinHash) {
+          await client.query('ROLLBACK');
+          return res.status(400).json({ ok: false, error: 'pin_required' });
+        }
+        if (depositPin) {
+          await client.query(
+            'UPDATE accounts SET pin_hash = $1 WHERE id = $2',
+            [accountPinHash, acct.id]
+          );
+        }
+        await client.query(
+          'UPDATE accounts SET balance = balance + $1 WHERE id = $2',
+          [depositAmount, acct.id]
+        );
+        newBalance = (Number(acct.balance) + Number(depositAmount)).toFixed(2);
+        await client.query(
+          'INSERT INTO transactions (account_id, type, amount, note) VALUES ($1, $2, $3, $4)',
+          [acct.id, 'deposit', depositAmount, note || null]
+        );
+      } else {
+        // The account needs a PIN for the client to sign in: the PIN staff
+        // just set wins; otherwise the PIN the client chose when they
+        // applied is copied over. With neither, the account cannot open.
+        let accountPinHash = null;
+        if (depositPin) {
+          accountPinHash = hashPin(depositPin);
+        } else if (row.pin_hash) {
+          accountPinHash = row.pin_hash;
+        } else {
+          await client.query('ROLLBACK');
+          return res.status(400).json({ ok: false, error: 'pin_required' });
+        }
+        let account = null;
+        for (let attempt = 0; attempt < 5 && !account; attempt++) {
+          accountNumber = makeAccountNumber();
+          try {
+            const inserted = await client.query(
+              'INSERT INTO accounts (application_id, account_number, currency, balance, status, pin_hash) ' +
+                'VALUES ($1, $2, $3, $4, $5, $6) RETURNING id',
+              [id, accountNumber, depositCurrency, depositAmount, 'active', accountPinHash]
+            );
+            account = inserted.rows[0];
+          } catch (e) {
+            if (e.code === '23505') continue; // account number collision: try another one
+            throw e;
+          }
+        }
+        if (!account) throw new Error('could not allocate an account number');
+        newBalance = depositAmount;
+        await client.query(
+          'INSERT INTO transactions (account_id, type, amount, note) VALUES ($1, $2, $3, $4)',
+          [account.id, 'deposit', depositAmount, note || null]
+        );
+      }
     }
     await client.query('COMMIT');
 
@@ -368,9 +432,12 @@ async function handleApplicationReview(req, res) {
       }
     }
     const response = { ok: true, status: newStatus, email_sent: emailSent };
+    if (decision === 'approved' && accountNumber) {
+      response.account_number = accountNumber;
+    }
     if (decision === 'deposit_received') {
       response.account_number = accountNumber;
-      response.balance = depositAmount;
+      response.balance = newBalance;
       response.currency = depositCurrency;
     }
     return res.status(200).json(response);

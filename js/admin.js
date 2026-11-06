@@ -275,7 +275,7 @@
   function loadDetailAccount(app) {
     var box = $('detail-account');
     show(box, false);
-    if (app.status !== 'active') return;
+    if (app.status !== 'active' && app.status !== 'approved') return;
     fetch('/api/admin-account?application_id=' + app.id, { headers: { 'Authorization': 'Bearer ' + token() } })
       .then(function (r) {
         if (!r.ok) throw new Error('load');
