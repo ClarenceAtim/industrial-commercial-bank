@@ -15,6 +15,7 @@
 const crypto = require('crypto');
 const { getPool } = require('./_db');
 const { requireAdmin } = require('./_auth');
+const { validPin, hashPin, pinColumnsPresent, PIN_MIGRATION_MESSAGE } = require('./_auth');
 const { validCurrency } = require('./_money');
 const { validAmount } = require('./_money');
 
@@ -135,6 +136,12 @@ async function handlePost(req, res) {
   if (!reference || openingBalance === null || !currency) {
     return res.status(400).json({ ok: false, error: 'invalid_fields' });
   }
+  // Staff may set the client's 4-digit PIN here. It is optional only
+  // when the application already has one.
+  const accountPin = typeof body.pin === 'string' ? body.pin.trim() : '';
+  if (accountPin && !validPin(accountPin)) {
+    return res.status(400).json({ ok: false, error: 'invalid_pin' });
+  }
 
   let pool;
   try {
@@ -145,9 +152,19 @@ async function handlePost(req, res) {
 
   const client = await pool.connect();
   try {
+    // The PIN columns arrive with the 2026-11-06 migration
+    // (sql/migrations/2026-11-06-client-pin-login.sql). A new account
+    // needs a PIN, so fail with a clear error until it has run.
+    if (!(await pinColumnsPresent(client))) {
+      return res.status(500).json({
+        ok: false,
+        error: 'migration_required',
+        message: PIN_MIGRATION_MESSAGE
+      });
+    }
     await client.query('BEGIN');
     const found = await client.query(
-      'SELECT id, reference, status FROM applications WHERE reference = $1 FOR UPDATE',
+      'SELECT id, reference, status, pin_hash FROM applications WHERE reference = $1 FOR UPDATE',
       [reference]
     );
     if (found.rows.length === 0) {
@@ -167,15 +184,27 @@ async function handlePost(req, res) {
       await client.query('ROLLBACK');
       return res.status(409).json({ ok: false, error: 'account_exists' });
     }
+    // The account needs a PIN for the client to sign in: the PIN staff
+    // just set wins; otherwise the PIN the client chose when they
+    // applied is copied over. With neither, the account cannot open.
+    let accountPinHash = null;
+    if (accountPin) {
+      accountPinHash = hashPin(accountPin);
+    } else if (application.pin_hash) {
+      accountPinHash = application.pin_hash;
+    } else {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ ok: false, error: 'pin_required' });
+    }
     let account = null;
     let accountNumber = null;
     for (let attempt = 0; attempt < 5 && !account; attempt++) {
       accountNumber = makeAccountNumber();
       try {
         const inserted = await client.query(
-          'INSERT INTO accounts (application_id, account_number, currency, balance, status) ' +
-            'VALUES ($1, $2, $3, $4, $5) RETURNING id, account_number, currency, balance, status',
-          [application.id, accountNumber, currency, openingBalance, 'active']
+          'INSERT INTO accounts (application_id, account_number, currency, balance, status, pin_hash) ' +
+            'VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, account_number, currency, balance, status',
+          [application.id, accountNumber, currency, openingBalance, 'active', accountPinHash]
         );
         account = inserted.rows[0];
       } catch (e) {

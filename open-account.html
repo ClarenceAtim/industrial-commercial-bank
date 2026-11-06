@@ -63,6 +63,12 @@
         <legend data-i18n="open_account_title">Type de compte</legend>
         <div class="field"><label data-i18n="open_acct_type">Type de compte souhaité</label><select name="account_type" required><option value="" data-i18n="open_select_prompt">— Choisir —</option><option value="current" data-i18n="open_acct_current">Compte courant — Particulier</option><option value="savings" data-i18n="open_acct_savings">Compte d'épargne — Particulier</option><option value="business" data-i18n="open_acct_biz">Compte professionnel — Entreprise</option></select></div>
       </fieldset>
+      <fieldset>
+        <legend data-i18n="open_pin_title">Code PIN</legend>
+        <div class="field"><label data-i18n="open_pin_label">Choisissez un code PIN à 4 chiffres</label><input type="password" name="pin" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" minlength="4" autocomplete="new-password" required></div>
+        <div class="field"><label data-i18n="open_pin_confirm_label">Confirmez votre code PIN</label><input type="password" name="pin_confirm" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" minlength="4" autocomplete="new-password" required></div>
+        <p><small data-i18n="open_pin_hint">Votre code PIN à 4 chiffres vous servira à vous connecter à votre espace client. Ne le partagez avec personne.</small></p>
+      </fieldset>
       <button class="btn" type="submit" data-i18n="open_submit">Envoyer ma demande</button>
     </form>
     <div class="form-result" id="open-result">

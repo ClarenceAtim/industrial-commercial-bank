@@ -11,6 +11,7 @@
 // DATABASE_URL. Optional email: see _mail.js.
 const { getPool } = require('./_db');
 const { requireAdmin } = require('./_auth');
+const { validPin, hashPin, pinColumnsPresent, PIN_MIGRATION_MESSAGE } = require('./_auth');
 const crypto = require('crypto');
 const { notifyApplicantDecision } = require('./_mail');
 const { validAmount, validCurrency } = require('./_money');
@@ -233,11 +234,18 @@ async function handleApplicationReview(req, res) {
   // required (currency defaults to USD when not given).
   let depositAmount = null;
   let depositCurrency = 'USD';
+  let depositPin = '';
   if (decision === 'deposit_received') {
     depositAmount = validAmount(body.amount);
     depositCurrency = validCurrency(body.currency);
     if (!depositAmount || !depositCurrency) {
       return res.status(400).json({ ok: false, error: 'invalid_fields' });
+    }
+    // Staff may set the client's 4-digit PIN here. It is optional only
+    // when the application already has one.
+    depositPin = typeof body.pin === 'string' ? body.pin.trim() : '';
+    if (depositPin && !validPin(depositPin)) {
+      return res.status(400).json({ ok: false, error: 'invalid_pin' });
     }
   }
 
@@ -250,9 +258,22 @@ async function handleApplicationReview(req, res) {
 
   const client = await pool.connect();
   try {
+    // The PIN columns arrive with the 2026-11-06 migration
+    // (sql/migrations/2026-11-06-client-pin-login.sql). A deposit
+    // confirmation opens the account, and an account needs a PIN, so
+    // fail with a clear error until the migration has run.
+    if (decision === 'deposit_received' && !(await pinColumnsPresent(client))) {
+      return res.status(500).json({
+        ok: false,
+        error: 'migration_required',
+        message: PIN_MIGRATION_MESSAGE
+      });
+    }
     await client.query('BEGIN');
     const current = await client.query(
-      'SELECT id, reference, first_name, last_name, email, status FROM applications WHERE id = $1 FOR UPDATE',
+      'SELECT id, reference, first_name, last_name, email, status' +
+        (decision === 'deposit_received' ? ', pin_hash' : '') +
+        ' FROM applications WHERE id = $1 FOR UPDATE',
       [id]
     );
     if (current.rows.length === 0) {
@@ -283,14 +304,26 @@ async function handleApplicationReview(req, res) {
         await client.query('ROLLBACK');
         return res.status(409).json({ ok: false, error: 'account_exists' });
       }
+      // The account needs a PIN for the client to sign in: the PIN staff
+      // just set wins; otherwise the PIN the client chose when they
+      // applied is copied over. With neither, the account cannot open.
+      let accountPinHash = null;
+      if (depositPin) {
+        accountPinHash = hashPin(depositPin);
+      } else if (row.pin_hash) {
+        accountPinHash = row.pin_hash;
+      } else {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ ok: false, error: 'pin_required' });
+      }
       let account = null;
       for (let attempt = 0; attempt < 5 && !account; attempt++) {
         accountNumber = makeAccountNumber();
         try {
           const inserted = await client.query(
-            'INSERT INTO accounts (application_id, account_number, currency, balance, status) ' +
-              'VALUES ($1, $2, $3, $4, $5) RETURNING id',
-            [id, accountNumber, depositCurrency, depositAmount, 'active']
+            'INSERT INTO accounts (application_id, account_number, currency, balance, status, pin_hash) ' +
+              'VALUES ($1, $2, $3, $4, $5, $6) RETURNING id',
+            [id, accountNumber, depositCurrency, depositAmount, 'active', accountPinHash]
           );
           account = inserted.rows[0];
         } catch (e) {

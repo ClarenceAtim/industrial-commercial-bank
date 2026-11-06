@@ -32,7 +32,7 @@
 <section class="hero">
   <div class="container">
     <h1 data-i18n="client_login_title">Espace client</h1>
-    <p data-i18n="client_login_sub">Connectez-vous avec votre numéro de compte, votre référence de demande et votre adresse e-mail.</p>
+    <p data-i18n="client_login_sub">Connectez-vous avec votre adresse e-mail et votre code PIN à 4 chiffres.</p>
     <div class="notice-box"><p data-i18n="client_note">Cet espace affiche votre solde et vos demandes. Aucun mouvement d'argent n'est effectué depuis ce site : les dépôts, les retraits et les virements sont traités par la banque elle-même.</p></div>
   </div>
 </section>
@@ -42,16 +42,15 @@
     <form id="client-login-form">
       <fieldset>
         <legend data-i18n="client_login_title">Espace client</legend>
-        <div class="field"><label data-i18n="client_login_account" for="client-account-number">Numéro de compte</label><input type="text" id="client-account-number" name="account_number" required autocomplete="off"></div>
-        <div class="field"><label data-i18n="client_login_ref" for="client-reference">Référence de la demande</label><input type="text" id="client-reference" name="reference" required autocomplete="off"></div>
         <div class="field"><label data-i18n="client_login_email" for="client-email">Adresse e-mail</label><input type="email" id="client-email" name="email" required autocomplete="email"></div>
+        <div class="field"><label data-i18n="client_login_pin" for="client-pin">Code PIN</label><input type="password" id="client-pin" name="pin" required inputmode="numeric" pattern="[0-9]{4}" maxlength="4" minlength="4" autocomplete="current-password"></div>
       </fieldset>
-      <p><small data-i18n="client_login_note">Aucun mot de passe n'est nécessaire : utilisez le numéro de compte, la référence et l'adresse e-mail reçus de la banque.</small></p>
+      <p><small data-i18n="client_login_note">Utilisez l'adresse e-mail de votre demande et le code PIN à 4 chiffres que vous avez choisi (ou que la banque vous a communiqué).</small></p>
       <p id="client-login-next" hidden><small data-i18n="client_login_next">Connectez-vous pour continuer vers la page demandée.</small></p>
       <button class="btn" type="submit" data-i18n="client_login_btn">Se connecter</button>
     </form>
     <div class="form-error" id="client-login-error">
-      <h3 data-i18n="client_login_error">Ces informations ne correspondent à aucun compte actif.</h3>
+      <h3 data-i18n="client_login_error">L'adresse e-mail ou le code PIN est incorrect.</h3>
     </div>
     <hr>
     <h2 data-i18n="client_login_create_title">Nouveau client ?</h2>

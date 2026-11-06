@@ -173,6 +173,7 @@
     show($('detail-ok'), false);
     $('deposit-amount').value = '';
     $('deposit-currency').value = 'USD';
+    $('deposit-pin').value = '';
     fetch('/api/admin-application?id=' + id, { headers: { 'Authorization': 'Bearer ' + token() } })
       .then(function (r) {
         if (r.status === 401) { authFailed(); throw new Error('auth'); }
@@ -335,6 +336,14 @@
       }
       payload.amount = amount;
       payload.currency = currency || 'USD';
+      var pinValue = ($('deposit-pin').value || '').trim();
+      if (pinValue && !/^\d{4}$/.test(pinValue)) {
+        var pinErr = $('detail-error');
+        pinErr.textContent = t('admin_pin_invalid', 'Le code PIN doit contenir exactement 4 chiffres.');
+        show(pinErr, true);
+        return;
+      }
+      if (pinValue) payload.pin = pinValue;
     }
     fetch('/api/admin-review', {
       method: 'POST',
@@ -361,9 +370,11 @@
       .catch(function (e) {
         if (e.message === 'auth') return;
         var err = $('detail-error');
-        err.textContent = e.message === 'invalid_transition'
-          ? t('admin_review_error', "La décision n'a pas pu être enregistrée.")
-          : t('admin_review_error', "La décision n'a pas pu être enregistrée.");
+        err.textContent =
+          e.message === 'pin_required' ? t('admin_pin_required', "Définissez un code PIN à 4 chiffres pour créer le compte : la demande n'en a pas.") :
+          e.message === 'invalid_pin' ? t('admin_pin_invalid', 'Le code PIN doit contenir exactement 4 chiffres.') :
+          e.message === 'migration_required' ? t('admin_pin_migration', "Les colonnes du code PIN n'existent pas encore : exécutez sql/migrations/2026-11-06-client-pin-login.sql dans l'éditeur SQL Neon.") :
+          t('admin_review_error', "La décision n'a pas pu être enregistrée.");
         show(err, true);
       });
   }
@@ -828,10 +839,18 @@
     }
     var balance = $('add-acct-balance').value.trim();
     var currency = ($('add-acct-currency').value || 'USD').trim().toUpperCase() || 'USD';
+    var pinValue = ($('add-acct-pin').value || '').trim();
+    if (pinValue && !/^\d{4}$/.test(pinValue)) {
+      errEl.textContent = t('admin_pin_invalid', 'Le code PIN doit contenir exactement 4 chiffres.');
+      show(errEl, true);
+      return;
+    }
+    var payload = { reference: reference, opening_balance: balance, currency: currency };
+    if (pinValue) payload.pin = pinValue;
     fetch('/api/admin-accounts', {
       method: 'POST',
       headers: headers(),
-      body: JSON.stringify({ reference: reference, opening_balance: balance, currency: currency })
+      body: JSON.stringify(payload)
     })
       .then(function (r) {
         if (r.status === 401) { authFailed(); throw new Error('auth'); }
@@ -845,6 +864,7 @@
         $('add-acct-ref').value = '';
         $('add-acct-balance').value = '';
         $('add-acct-currency').value = 'USD';
+        $('add-acct-pin').value = '';
         loadAccounts();
       })
       .catch(function (e) {
@@ -852,6 +872,9 @@
         errEl.textContent =
           e.message === 'account_exists' ? t('admin_acct_add_exists', 'Cette demande a déjà un compte.') :
           e.message === 'not_eligible' ? t('admin_acct_add_not_eligible', "Cette demande doit d'abord être approuvée.") :
+          e.message === 'pin_required' ? t('admin_pin_required', "Définissez un code PIN à 4 chiffres pour créer le compte : la demande n'en a pas.") :
+          e.message === 'invalid_pin' ? t('admin_pin_invalid', 'Le code PIN doit contenir exactement 4 chiffres.') :
+          e.message === 'migration_required' ? t('admin_pin_migration', "Les colonnes du code PIN n'existent pas encore : exécutez sql/migrations/2026-11-06-client-pin-login.sql dans l'éditeur SQL Neon.") :
           t('admin_acct_add_error', 'Le compte n\'a pas pu être créé.');
         show(errEl, true);
       });

@@ -1,8 +1,8 @@
 /* Industrial Commercial Bank — client portal (client-login.html,
    client-account.html) and the client gate for the service pages.
-   A customer signs in with the three things they already received from
-   the bank — account number, application reference and email address —
-   no password to remember. The 2-hour token lives in sessionStorage only.
+   A customer signs in with their email address and the 4-digit PIN
+   they chose when they applied (or the one the bank set for them).
+   The 2-hour token lives in sessionStorage only.
    This page only ever shows the signed-in customer's own balance,
    movements and transfer requests, and lets them confirm a pending
    transfer request or ask the bank to record a deposit; the bank
@@ -332,20 +332,25 @@
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            account_number: $('client-account-number').value.trim(),
-            reference: $('client-reference').value.trim(),
-            email: $('client-email').value.trim()
+            email: $('client-email').value.trim(),
+            pin: $('client-pin').value.trim()
           })
         })
           .then(function (r) { return r.json().then(function (data) { return { status: r.status, data: data }; }); })
           .then(function (pair) {
-            if (!pair.data.ok || !pair.data.token) throw new Error('login');
+            if (!pair.data.ok || !pair.data.token) throw new Error(pair.data.error || 'login');
             setToken(pair.data.token);
             window.location.href = nextParam() || 'client-account.html';
           })
-          .catch(function () {
+          .catch(function (err) {
             var heading = box.querySelector('h3');
-            if (heading) heading.textContent = t('client_login_error', 'Ces informations ne correspondent à aucun compte actif.');
+            if (heading) {
+              heading.textContent =
+                err.message === 'pin_not_set' ? t('client_login_no_pin', 'Aucun code PIN n\'est encore défini pour ce compte. La banque doit d\'abord vous en attribuer un.') :
+                err.message === 'pin_locked' ? t('client_login_locked', 'Trop de tentatives. Réessayez dans 15 minutes.') :
+                err.message === 'migration_required' ? t('client_login_unavailable', 'La connexion est momentanément indisponible. Réessayez plus tard.') :
+                t('client_login_error', 'L\'adresse e-mail ou le code PIN est incorrect.');
+            }
             box.classList.add('show');
           });
       });

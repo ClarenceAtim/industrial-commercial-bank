@@ -100,9 +100,65 @@ function verifyClientToken(token) {
   return accountId;
 }
 
+// 4-digit client PINs (email + PIN sign-in).
+// A PIN is exactly four digits, 0000-9999. Only a salted scrypt hash is
+// ever stored, as "scrypt$<salt hex>$<hash hex>"; a plaintext PIN is
+// never stored, logged or returned by any endpoint. Verification uses a
+// timing-safe comparison and treats any malformed stored value as no match.
+// The migration that adds the columns is
+// sql/migrations/2026-11-06-client-pin-login.sql.
+const PIN_SALT_BYTES = 16;
+const PIN_KEY_BYTES = 64;
+
+function validPin(pin) {
+  return typeof pin === 'string' && /^\d{4}$/.test(pin);
+}
+
+function hashPin(pin) {
+  const salt = crypto.randomBytes(PIN_SALT_BYTES);
+  const hash = crypto.scryptSync(pin, salt, PIN_KEY_BYTES);
+  return 'scrypt$' + salt.toString('hex') + '$' + hash.toString('hex');
+}
+
+function verifyPin(pin, stored) {
+  if (!validPin(pin) || typeof stored !== 'string') return false;
+  const parts = stored.split('$');
+  if (parts.length !== 3 || parts[0] !== 'scrypt') return false;
+  try {
+    const salt = Buffer.from(parts[1], 'hex');
+    const expected = Buffer.from(parts[2], 'hex');
+    if (salt.length !== PIN_SALT_BYTES || expected.length !== PIN_KEY_BYTES) return false;
+    const actual = crypto.scryptSync(pin, salt, PIN_KEY_BYTES);
+    return crypto.timingSafeEqual(actual, expected);
+  } catch (e) {
+    return false;
+  }
+}
+
+const PIN_MIGRATION_MESSAGE =
+  'The PIN columns are missing: run sql/migrations/2026-11-06-client-pin-login.sql in the Neon SQL editor first.';
+
+// True when all four PIN columns exist. `db` is a pool or a checked-out
+// client — both expose query(text, params).
+async function pinColumnsPresent(db) {
+  const probe = await db.query(
+    "SELECT table_name, column_name FROM information_schema.columns " +
+      "WHERE (table_name = 'accounts' AND column_name IN ('pin_hash', 'failed_login_attempts', 'pin_locked_until')) " +
+      "OR (table_name = 'applications' AND column_name = 'pin_hash')"
+  );
+  const found = {};
+  probe.rows.forEach(function (row) { found[row.table_name + '.' + row.column_name] = true; });
+  return Boolean(
+    found['accounts.pin_hash'] &&
+    found['accounts.failed_login_attempts'] &&
+    found['accounts.pin_locked_until'] &&
+    found['applications.pin_hash']
+  );
+}
+
 // Returns the client account id from the request's Bearer token, or null.
 function clientAccountId(req) {
   return verifyClientToken(bearerToken(req));
 }
 
-module.exports = { checkPassword, issueToken, verifyToken, bearerToken, requireAdmin, TOKEN_TTL_MS, issueClientToken, verifyClientToken, clientAccountId, CLIENT_TOKEN_TTL_MS };
+module.exports = { checkPassword, issueToken, verifyToken, bearerToken, requireAdmin, TOKEN_TTL_MS, issueClientToken, verifyClientToken, clientAccountId, CLIENT_TOKEN_TTL_MS, validPin, hashPin, verifyPin, pinColumnsPresent, PIN_MIGRATION_MESSAGE };

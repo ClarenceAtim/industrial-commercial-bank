@@ -49,6 +49,17 @@
         payload[key] = String(data.get(key) || '').trim();
       });
 
+      var pin = String(data.get('pin') || '').trim();
+      var pinConfirm = String(data.get('pin_confirm') || '').trim();
+      if (!/^\d{4}$/.test(pin) || pin !== pinConfirm) {
+        errorText.textContent = t('open_pin_error', 'Le code PIN doit contenir exactement 4 chiffres et les deux saisies doivent être identiques.');
+        errorBox.classList.add('show');
+        errorBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+      }
+      payload.pin = pin;
+      payload.pin_confirm = pinConfirm;
+
       if (submitBtn) {
         submitBtn.disabled = true;
         submitBtn.textContent = t('open_sending', 'Envoi en cours…');
@@ -80,6 +91,8 @@
               var message = t('open_error_text', 'Veuillez vérifier votre connexion et réessayer. Si le problème persiste, contactez la banque.');
               if (pair.body && pair.body.error === 'photo_too_large') {
                 message = t('open_error_file_size', 'La photo de la pièce est trop lourde (maximum 5 Mo).');
+              } else if (pair.body && pair.body.error === 'invalid_pin') {
+                message = t('open_pin_error', 'Le code PIN doit contenir exactement 4 chiffres et les deux saisies doivent être identiques.');
               } else if (pair.body && pair.body.error === 'invalid_fields') {
                 message = t('open_error_text', 'Veuillez vérifier votre connexion et réessayer. Si le problème persiste, contactez la banque.');
               }

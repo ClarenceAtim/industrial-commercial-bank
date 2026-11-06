@@ -1,8 +1,8 @@
 // Merged customer-portal endpoints.
 // Serves (via vercel.json rewrites, op query parameter):
 //   /api/client-account               the signed-in customer's account view (default)
-//   /api/client-login?op=login        sign a customer in (account number +
-//                                     application reference + email, no password)
+//   /api/client-login?op=login        sign a customer in (email address +
+//                                     4-digit PIN)
 //   /api/client-transfer-approve?op=approve  a customer confirms one of their
 //                                     own pending transfer requests
 //   /api/client-deposit-request?op=request-deposit  a customer asks the bank
@@ -16,8 +16,13 @@
 const { getPool } = require('./_db');
 const { clientAccountId } = require('./_auth');
 const { issueClientToken } = require('./_auth');
+const { validPin, verifyPin, pinColumnsPresent, PIN_MIGRATION_MESSAGE } = require('./_auth');
 const { validAmount, validCurrency } = require('./_money');
 const crypto = require('crypto');
+
+// Sign-in protection: five wrong PINs lock the account for 15 minutes.
+const MAX_FAILED_LOGINS = 5;
+const PIN_LOCK_MINUTES = 15;
 
 function clean(value) {
   return typeof value === 'string' ? value.trim() : '';
@@ -123,10 +128,9 @@ async function handleClientLogin(req, res) {
   }
 
   const body = req.body || {};
-  const accountNumber = clean(body.account_number);
-  const reference = clean(body.reference).toUpperCase();
   const email = clean(body.email).toLowerCase();
-  if (!accountNumber || !reference || !email) {
+  const pin = typeof body.pin === 'string' ? body.pin.trim() : '';
+  if (!email || !validPin(pin)) {
     return res.status(400).json({ ok: false, error: 'invalid_fields' });
   }
 
@@ -138,20 +142,73 @@ async function handleClientLogin(req, res) {
   }
 
   try {
+    // The PIN columns arrive with the 2026-11-06 migration
+    // (sql/migrations/2026-11-06-client-pin-login.sql). Until it has run,
+    // fail with a clear error instead of a raw database error.
+    if (!(await pinColumnsPresent(pool))) {
+      return res.status(500).json({
+        ok: false,
+        error: 'migration_required',
+        message: PIN_MIGRATION_MESSAGE
+      });
+    }
     const result = await pool.query(
-      'SELECT a.id FROM accounts a JOIN applications ap ON ap.id = a.application_id ' +
-        'WHERE a.account_number = $1 AND ap.reference = $2 AND lower(ap.email) = $3 ' +
-        "AND a.status = 'active'",
-      [accountNumber, reference, email]
+      'SELECT a.id, a.pin_hash, a.failed_login_attempts, a.pin_locked_until ' +
+        'FROM accounts a JOIN applications ap ON ap.id = a.application_id ' +
+        "WHERE lower(ap.email) = $1 AND a.status = 'active'",
+      [email]
     );
+    // Unknown email: the same generic error as a wrong PIN, and nothing
+    // is recorded — the attempt must not reveal whether the email exists.
     if (result.rows.length === 0) {
       return res.status(401).json({ ok: false, error: 'unauthorized' });
     }
-    const token = issueClientToken(result.rows[0].id);
-    if (!token) {
-      return res.status(500).json({ ok: false, error: 'server_error' });
+    const now = Date.now();
+    const locked = [];
+    const withPin = [];
+    const withoutPin = [];
+    result.rows.forEach(function (row) {
+      const lockedUntil = row.pin_locked_until ? new Date(row.pin_locked_until).getTime() : 0;
+      if (lockedUntil > now) locked.push(row);
+      else if (row.pin_hash) withPin.push(row);
+      else withoutPin.push(row);
+    });
+    // A matching PIN on an account that is not locked signs in. The
+    // successful sign-in clears that account's failure count.
+    for (let i = 0; i < withPin.length; i++) {
+      if (verifyPin(pin, withPin[i].pin_hash)) {
+        await pool.query(
+          'UPDATE accounts SET failed_login_attempts = 0, pin_locked_until = NULL WHERE id = $1',
+          [withPin[i].id]
+        );
+        const token = issueClientToken(withPin[i].id);
+        if (!token) {
+          return res.status(500).json({ ok: false, error: 'server_error' });
+        }
+        return res.status(200).json({ ok: true, token: token });
+      }
     }
-    return res.status(200).json({ ok: true, token: token });
+    // No match. A locked account says so plainly — even a correct PIN on
+    // a locked account stays locked until the time runs out.
+    if (locked.length > 0) {
+      return res.status(429).json({ ok: false, error: 'pin_locked' });
+    }
+    // None of this email's accounts has a PIN yet: the bank must set one
+    // before the client can sign in.
+    if (withPin.length === 0 && withoutPin.length > 0) {
+      return res.status(403).json({ ok: false, error: 'pin_not_set' });
+    }
+    // Wrong PIN: count one failure per account that has a PIN. At five
+    // failures the account locks for 15 minutes.
+    for (let i = 0; i < withPin.length; i++) {
+      await pool.query(
+        'UPDATE accounts SET failed_login_attempts = failed_login_attempts + 1, ' +
+          "pin_locked_until = CASE WHEN failed_login_attempts + 1 >= $2 THEN now() + ($3 || ' minutes')::interval ELSE pin_locked_until END " +
+          'WHERE id = $1',
+        [withPin[i].id, MAX_FAILED_LOGINS, String(PIN_LOCK_MINUTES)]
+      );
+    }
+    return res.status(401).json({ ok: false, error: 'unauthorized' });
   } catch (e) {
     return res.status(500).json({ ok: false, error: 'server_error' });
   }

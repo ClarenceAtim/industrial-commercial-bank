@@ -11,6 +11,7 @@
 const crypto = require('crypto');
 const { getPool } = require('./_db');
 const { notifyAdminNewApplication } = require('./_mail');
+const { validPin, hashPin, PIN_MIGRATION_MESSAGE } = require('./_auth');
 
 const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
 const ACCOUNT_TYPES = ['current', 'savings', 'business'];
@@ -78,6 +79,14 @@ module.exports = async function handler(req, res) {
     return res.status(400).json({ ok: false, error: 'invalid_fields' });
   }
 
+  // The client chooses a 4-digit PIN at sign-up; only its salted hash is
+  // ever stored. The PIN is what they will sign in with later.
+  const pin = typeof body.pin === 'string' ? body.pin.trim() : '';
+  const pinConfirm = typeof body.pin_confirm === 'string' ? body.pin_confirm.trim() : '';
+  if (!validPin(pin) || pin !== pinConfirm) {
+    return res.status(400).json({ ok: false, error: 'invalid_pin' });
+  }
+
   let photoBuffer = null;
   let photoFilename = null;
   let photoMimetype = null;
@@ -109,6 +118,19 @@ module.exports = async function handler(req, res) {
 
   const client = await pool.connect();
   try {
+    // The pin_hash column arrives with the 2026-11-06 PIN migration
+    // (sql/migrations/2026-11-06-client-pin-login.sql). Until it has run,
+    // fail with a clear error instead of a raw database error.
+    const pinProbe = await client.query(
+      "SELECT 1 FROM information_schema.columns WHERE table_name = 'applications' AND column_name = 'pin_hash'"
+    );
+    if (pinProbe.rows.length === 0) {
+      return res.status(500).json({
+        ok: false,
+        error: 'migration_required',
+        message: PIN_MIGRATION_MESSAGE
+      });
+    }
     await client.query('BEGIN');
     let reference = null;
     let inserted = null;
@@ -118,8 +140,8 @@ module.exports = async function handler(req, res) {
         const result = await client.query(
           'INSERT INTO applications ' +
             '(reference, first_name, last_name, dob, nationality, phone, email, address, ' +
-            'id_type, id_number, id_photo, id_photo_filename, id_photo_mimetype, account_type, status) ' +
-            'VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) RETURNING id, created_at',
+            'id_type, id_number, id_photo, id_photo_filename, id_photo_mimetype, account_type, status, pin_hash) ' +
+            'VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16) RETURNING id, created_at',
           [
             reference,
             application.first_name,
@@ -135,7 +157,8 @@ module.exports = async function handler(req, res) {
             photoFilename,
             photoMimetype,
             application.account_type,
-            'pending'
+            'pending',
+            hashPin(pin)
           ]
         );
         inserted = result.rows[0];

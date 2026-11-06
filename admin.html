@@ -123,6 +123,8 @@
         <div id="deposit-fields" hidden>
           <div class="field"><label data-i18n="admin_deposit_amount_label" for="deposit-amount">Montant du dépôt</label><input type="number" id="deposit-amount" min="0" step="0.01" inputmode="decimal"></div>
           <div class="field"><label data-i18n="admin_deposit_currency_label" for="deposit-currency">Devise</label><input type="text" id="deposit-currency" value="USD" maxlength="3"></div>
+          <div class="field"><label data-i18n="admin_pin_label" for="deposit-pin">Code PIN à 4 chiffres</label><input type="password" id="deposit-pin" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" autocomplete="off"></div>
+          <p><small data-i18n="admin_pin_hint">Si la demande n'a pas encore de code PIN, définissez-en un ici : le client s'en servira pour se connecter. Laissez vide pour garder le code choisi par le client.</small></p>
         </div>
         <div id="detail-account" hidden>
           <h3 data-i18n="admin_accounts_title">Comptes clients</h3>
@@ -161,6 +163,7 @@
             <div class="field"><label data-i18n="admin_acct_add_ref" for="add-acct-ref">Référence de la demande</label><input type="text" id="add-acct-ref" maxlength="30"></div>
             <div class="field"><label data-i18n="admin_acct_add_balance" for="add-acct-balance">Solde initial (facultatif)</label><input type="number" id="add-acct-balance" min="0" step="0.01" inputmode="decimal"></div>
             <div class="field"><label data-i18n="admin_deposit_currency_label" for="add-acct-currency">Devise</label><input type="text" id="add-acct-currency" value="USD" maxlength="3"></div>
+            <div class="field"><label data-i18n="admin_pin_label" for="add-acct-pin">Code PIN à 4 chiffres</label><input type="password" id="add-acct-pin" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" autocomplete="off"></div>
             <button class="btn" id="add-acct-submit" type="button" data-i18n="admin_acct_add_submit">Créer le compte</button>
           </div>
           <p class="admin-error" id="add-acct-error" hidden></p>
