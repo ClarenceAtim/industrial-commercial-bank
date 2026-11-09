@@ -54,7 +54,7 @@
     <p class="lead" data-i18n="loan_calc_note">Simulation indicative uniquement. Le taux final dépend de votre dossier et est confirmé par la banque.</p>
     <div class="card">
       <div class="field"><label data-i18n="loan_amount">Montant du prêt</label><input type="number" id="loan-amount" value="1000000" min="0"></div>
-      <div class="field"><label data-i18n="loan_rate">Taux annuel (%)</label><input type="number" id="loan-rate" value="10" min="0" step="0.1"></div>
+      <div class="field"><label data-i18n="loan_rate">Taux annuel (%)</label><input type="number" id="loan-rate" value="12.36" min="0" step="0.1"></div>
       <div class="field"><label data-i18n="loan_term">Durée (mois)</label><input type="number" id="loan-term" value="24" min="1"></div>
       <div class="calc-result" id="loan-result"></div>
     </div>
@@ -80,7 +80,9 @@
       <li><span data-i18n="label_address">Adresse :</span> <span class="placeholder">[Address to be added]</span></li>
     </ul></div>
     <div><h4 data-i18n="footer_hours_title">Heures d'ouverture</h4><ul>
-      <li><span class="placeholder">[Hours to be confirmed]</span></li>
+      <li data-i18n="footer_hours_mon_fri">Lun–Ven : 9h–17h</li>
+      <li data-i18n="footer_hours_sat">Sam : 9h–13h</li>
+      <li data-i18n="footer_hours_sun">Dim : Fermé</li>
     </ul></div>
     <div><h4 data-i18n="footer_legal_title">Mentions légales</h4><ul>
       <li><a href="legal.html" data-i18n="footer_legal_link">Confidentialité et conditions</a></li>
