@@ -1,35 +1,40 @@
 /* Industrial Commercial Bank — shared stylesheet */
 :root{
-  --blue:#0B3D91; --blue-dark:#082A63; --blue-mid:#1E6FB8; --blue-light:#5B9BD5;
-  --blue-pale:#EAF2FB; --white:#fff; --ink:#1a2433; --muted:#5a6b82;
-  --line:#dbe6f3; --gold:#c98a2d; --radius:12px;
-  --shadow:0 10px 30px rgba(11,61,145,.12);
+  --navy:#0A2540; --navy-deep:#061A2E; --navy-mid:#0E3A66;
+  --blue:#1D5FCC; --blue-dark:#16489E; --blue-mid:#3B82F6; --blue-light:#8FB8EC;
+  --blue-pale:#F5F8FC; --white:#fff; --ink:#1F2937; --muted:#64748B;
+  --line:#DCE5F0; --gold:#C9A227; --gold-deep:#A8861B; --gold-dark:#8F7116;
+  --radius:12px;
+  --shadow:0 10px 30px rgba(10,37,64,.12);
+  --shadow-soft:0 6px 20px rgba(10,37,64,.07);
 }
 *{box-sizing:border-box}
 html{scroll-behavior:smooth}
 body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;color:var(--ink);background:var(--white);line-height:1.6}
-a{color:var(--blue-mid);text-decoration:none}
+a{color:var(--blue);text-decoration:none}
 a:hover{text-decoration:underline}
 .container{max-width:1100px;margin:0 auto;padding:0 20px}
 img{max-width:100%}
 
 /* Header */
-.site-header{background:var(--white);border-bottom:1px solid var(--line);border-top:4px solid var(--blue);position:sticky;top:0;z-index:50}
+.site-header{background:var(--navy);border-bottom:1px solid rgba(255,255,255,.12);border-top:4px solid var(--gold);position:sticky;top:0;z-index:50}
 .header-inner{display:flex;align-items:center;gap:16px;padding:12px 20px;max-width:1100px;margin:0 auto}
-.brand{display:flex;align-items:center;gap:10px;font-weight:700;color:var(--blue);font-size:18px;line-height:1.2}
-.brand img{width:44px;height:44px}
-.brand small{display:block;font-weight:600;color:var(--muted);font-size:12px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;color:#fff;font-size:18px;line-height:1.2}
+.brand img{width:44px;height:44px;background:#fff;border-radius:10px;padding:3px}
+.brand small{display:block;font-weight:600;color:#CBD5E1;font-size:12px}
 .main-nav{margin-left:auto;display:flex;gap:4px;flex-wrap:wrap}
-.main-nav a{color:var(--ink);padding:8px 10px;border-radius:8px;font-size:14px;font-weight:600}
-.main-nav a:hover,.main-nav a.active{background:var(--blue-pale);color:var(--blue);text-decoration:none}
-.lang-select{border:1px solid var(--line);background:var(--white);border-radius:8px;padding:6px 8px;cursor:pointer;font-weight:700}
+.main-nav a{color:#E2E8F0;padding:8px 10px;border-radius:8px;font-size:14px;font-weight:600}
+.main-nav a:hover{background:rgba(255,255,255,.12);color:#fff;text-decoration:none}
+.main-nav a.active{background:rgba(255,255,255,.12);color:#fff;text-decoration:none;box-shadow:inset 0 -3px 0 var(--gold)}
+.lang-select{border:1px solid rgba(255,255,255,.35);background:rgba(255,255,255,.10);color:#fff;border-radius:8px;padding:6px 8px;cursor:pointer;font-weight:700}
+.lang-select option{color:#1F2937}
 .header-lang-select{margin-left:8px}
 .footer-lang{display:flex;gap:8px;align-items:center;justify-content:center;margin-top:10px}
-.footer-lang select{background:var(--blue);color:#fff;border-color:rgba(255,255,255,.4)}
+.footer-lang select{background:rgba(255,255,255,.10);color:#fff;border-color:rgba(255,255,255,.35)}
 .footer-lang select option{color:#000}
 html[dir="rtl"] body{text-align:right}
 html[dir="rtl"] .header-lang-select{margin-left:0;margin-right:8px}
-.nav-toggle{display:none;margin-left:auto;background:none;border:1px solid var(--line);border-radius:8px;padding:8px 12px;font-size:18px;cursor:pointer}
+.nav-toggle{display:none;margin-left:auto;background:none;border:1px solid rgba(255,255,255,.4);color:#fff;border-radius:8px;padding:8px 12px;font-size:18px;cursor:pointer}
 @media(max-width:860px){
   .main-nav{display:none;flex-direction:column;width:100%;order:3}
   .main-nav.open{display:flex}
@@ -40,17 +45,21 @@ html[dir="rtl"] .header-lang-select{margin-left:0;margin-right:8px}
 }
 
 /* Hero */
-.hero{background:linear-gradient(180deg,#fff 0%,var(--blue-pale) 100%);color:var(--ink);padding:56px 0}
-.hero h1{margin:0 0 12px;font-size:clamp(28px,5vw,44px);line-height:1.15;color:var(--blue)}
-.hero p{max-width:640px;color:var(--muted);margin:0 0 24px}
+.hero{background:linear-gradient(120deg,var(--navy) 0%,#123A6B 60%,var(--blue) 100%);color:#fff;padding:56px 0}
+.hero h1{margin:0 0 12px;font-size:clamp(28px,5vw,44px);line-height:1.15;color:#fff}
+.hero p{max-width:640px;color:#D7E3F2;margin:0 0 24px}
 .hero .cta-row{display:flex;gap:12px;flex-wrap:wrap}
 .hero-split{display:grid;grid-template-columns:1.05fr .95fr;gap:40px;align-items:center}
 .hero-split .hero-copy p{max-width:560px}
 .hero-photo{margin:0}
-.hero-photo img{width:100%;max-height:420px;object-fit:cover;border-radius:var(--radius);display:block;box-shadow:var(--shadow)}
-.btn{display:inline-block;background:var(--blue);color:#fff;padding:12px 22px;border-radius:10px;font-weight:700;border:0;cursor:pointer;font-size:15px}
-.btn:hover{background:var(--blue-mid);text-decoration:none}
-.btn-light{background:#fff;color:var(--blue);border:1px solid var(--line);box-shadow:0 2px 8px rgba(11,61,145,.08)}
+.hero-photo img{width:100%;max-height:420px;object-fit:cover;border-radius:var(--radius);display:block;box-shadow:0 14px 34px rgba(0,0,0,.35)}
+.hero .btn-light{color:var(--navy)}
+.hero .btn-light:hover{background:#EAF1FC}
+.hero .btn-outline{color:#fff;border-color:rgba(255,255,255,.85)}
+.hero .btn-outline:hover{background:rgba(255,255,255,.12)}
+.btn{display:inline-block;background:var(--gold-deep);color:#fff;padding:12px 22px;border-radius:10px;font-weight:700;border:0;cursor:pointer;font-size:15px;box-shadow:0 4px 14px rgba(168,134,27,.35)}
+.btn:hover{background:var(--gold-dark);text-decoration:none}
+.btn-light{background:#fff;color:var(--navy);border:1px solid var(--line);box-shadow:0 2px 8px rgba(10,37,64,.10)}
 .btn-light:hover{background:var(--blue-pale)}
 .btn-outline{background:transparent;color:var(--blue);border:2px solid var(--blue)}
 .btn-outline:hover{background:var(--blue-pale)}
@@ -63,41 +72,41 @@ html[dir="rtl"] .header-lang-select{margin-left:0;margin-right:8px}
 .section h2{color:var(--blue);margin:0 0 8px;font-size:clamp(22px,3.5vw,30px)}
 .section .lead{color:var(--muted);max-width:720px;margin:0 0 28px}
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:20px}
-.card{border:1px solid var(--line);border-radius:var(--radius);padding:22px;background:#fff}
+.card{border:1px solid var(--line);border-radius:var(--radius);padding:22px;background:#fff;box-shadow:var(--shadow-soft)}
 .card h3{margin:0 0 8px;color:var(--blue);font-size:18px}
 .card p{margin:0;color:var(--muted);font-size:15px}
 .card.svc{border-top:4px solid var(--blue)}
 .card-link{display:inline-block;margin-top:14px;font-weight:700}
 .steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:20px;counter-reset:step}
-.step{border:1px solid var(--line);border-radius:var(--radius);padding:22px;background:#fff}
-.step .num{width:36px;height:36px;border-radius:50%;background:var(--blue);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;margin-bottom:10px}
-.notice{background:#fff8e6;border:1px solid #f0d9a0;border-radius:var(--radius);padding:16px 20px;margin:20px 0}
-.notice strong{color:#7a5510}
-.placeholder{color:#8a6d1d;background:#fff8e6;border:1px dashed #d9b96a;border-radius:8px;padding:2px 8px;font-size:13px;white-space:nowrap}
+.step{border:1px solid var(--line);border-radius:var(--radius);padding:22px;background:#fff;box-shadow:var(--shadow-soft)}
+.step .num{width:36px;height:36px;border-radius:50%;background:var(--gold);color:var(--navy);display:flex;align-items:center;justify-content:center;font-weight:800;margin-bottom:10px}
+.notice{background:#FDF6E3;border:1px solid #E8D9A8;border-radius:var(--radius);padding:16px 20px;margin:20px 0}
+.notice strong{color:#7A6210}
+.placeholder{color:#7A6210;background:#FDF6E3;border:1px dashed var(--gold);border-radius:8px;padding:2px 8px;font-size:13px;white-space:nowrap}
 
 /* Rates teaser */
 .rates-teaser{background:var(--blue-pale)}
 .rate-card{text-align:left}
 .rate-card .rate-name{font-weight:700;color:var(--blue);font-size:17px;margin:0 0 6px}
-.rate-card .rate-value{font-size:15px;color:var(--ink);margin:0 0 6px}
+.rate-card .rate-value{font-size:20px;font-weight:800;color:var(--navy);margin:0 0 6px}
 .rate-card .rate-terms{font-size:14px;color:var(--muted);margin:0}
 .rates-note{font-size:13px;color:var(--muted);margin:24px 0 0}
 .rates-link{display:inline-block;margin-top:20px;font-weight:700}
 
 /* Member care band */
-.care-band{background:var(--blue);color:#fff}
+.care-band{background:var(--navy);color:#fff}
 .care-band .care-inner{display:flex;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap}
 .care-band h2{color:#fff;margin:0 0 6px}
 .care-band p{margin:0;opacity:.92;max-width:640px}
 .care-band .btn-light{flex-shrink:0}
 
 /* Promo band */
-.promo-band{background:linear-gradient(135deg,var(--blue-dark) 0%,var(--blue) 70%,var(--blue-mid) 100%);color:#fff}
+.promo-band{background:linear-gradient(135deg,var(--navy) 0%,#0E3A66 55%,var(--blue) 100%);color:#fff;border-top:4px solid var(--gold)}
 .promo-band h2{color:#fff}
-.promo-band .lead{color:#dbe6f3}
+.promo-band .lead{color:#D7E3F2}
 .promo-list{list-style:none;margin:0 0 28px;padding:0;display:flex;flex-direction:column;gap:10px}
 .promo-list li{display:flex;gap:10px;align-items:flex-start;font-weight:600}
-.promo-list li::before{content:"✓";color:#fff;background:rgba(255,255,255,.2);border-radius:50%;width:24px;height:24px;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;font-size:14px}
+.promo-list li::before{content:"✓";color:var(--navy);background:var(--gold);border-radius:50%;width:24px;height:24px;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;font-size:14px}
 .promo-band .btn-light{border-color:#fff}
 
 /* About band */
@@ -106,7 +115,7 @@ html[dir="rtl"] .header-lang-select{margin-left:0;margin-right:8px}
 .about-media h2{text-align:left}
 .about-media .lead{margin:0}
 .features{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:20px;text-align:left}
-.feature{border:1px solid var(--line);border-radius:var(--radius);padding:22px;background:#fff}
+.feature{border:1px solid var(--line);border-radius:var(--radius);padding:22px;background:#fff;box-shadow:var(--shadow-soft)}
 .feature h3{margin:0 0 8px;color:var(--blue);font-size:18px}
 .feature p{margin:0;color:var(--muted);font-size:15px}
 @media(max-width:760px){
@@ -138,7 +147,7 @@ form legend{font-weight:700;color:var(--blue);padding:0 8px}
 table{width:100%;border-collapse:collapse;margin:16px 0}
 th,td{border:1px solid var(--line);padding:10px 12px;text-align:left;font-size:15px}
 th{background:var(--blue);color:#fff}
-tr:nth-child(even) td{background:#f6f9fd}
+tr:nth-child(even) td{background:#F5F8FC}
 @media(max-width:640px){table,thead,tbody,th,td,tr{display:block}th{display:none}td{border:0;border-bottom:1px solid var(--line)}td::before{content:attr(data-label);font-weight:700;color:var(--blue);display:block}}
 
 /* FAQ */
@@ -156,13 +165,13 @@ tr:nth-child(even) td{background:#f6f9fd}
 .wa-btn:hover{text-decoration:none;transform:scale(1.05)}
 
 /* Footer */
-.site-footer{background:var(--blue);color:#dbe6f3;margin-top:0}
+.site-footer{background:var(--navy);color:#D7E3F2;margin-top:0}
 .site-footer a{color:#fff}
 .footer-inner{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:24px;padding:40px 20px;max-width:1100px;margin:0 auto}
-.site-footer h4{color:#fff;margin:0 0 10px}
+.site-footer h4{color:#fff;margin:0 0 10px;border-bottom:2px solid var(--gold);padding-bottom:8px;display:inline-block}
 .site-footer ul{list-style:none;margin:0;padding:0}
 .site-footer li{margin-bottom:6px}
-.footer-bottom{border-top:1px solid rgba(255,255,255,.2);text-align:center;padding:14px 20px;font-size:13px}
+.footer-bottom{border-top:1px solid rgba(255,255,255,.15);text-align:center;padding:14px 20px;font-size:13px}
 
 .card-photo{width:100%;height:180px;object-fit:cover;border-radius:8px;margin:0 0 14px;display:block}
 .value-card{padding:0;overflow:hidden}
@@ -179,7 +188,7 @@ tr:nth-child(even) td{background:#f6f9fd}
 .admin-head{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
 .admin-head h1{margin:0}
 .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin:24px 0}
-.stat-card{border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px;background:#fff}
+.stat-card{border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px;background:#fff;box-shadow:var(--shadow-soft)}
 .stat-num{display:block;font-size:26px;font-weight:800;color:var(--blue);line-height:1.2}
 .stat-label{font-size:13px;color:var(--muted);font-weight:600}
 .admin-toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:0 0 16px}
@@ -199,7 +208,7 @@ tr.clickable-row:hover td{background:var(--blue-pale)}
 .status-pill{display:inline-block;padding:2px 10px;border-radius:999px;font-size:13px;font-weight:700;white-space:nowrap}
 .status-pending{background:#fff4d6;color:#7a5510}
 .status-approved{background:#eefaf0;color:#1d6b34}
-.status-deposit_requested{background:#e8f1fd;color:#0B3D91}
+.status-deposit_requested{background:#EAF1FC;color:#1D5FCC}
 .status-active{background:#e2f5e9;color:#14532a}
 .status-rejected{background:#fdf0f0;color:#8f1d1d}
 .pager{display:flex;align-items:center;gap:14px;margin:16px 0;justify-content:center}
@@ -220,7 +229,7 @@ tr.clickable-row:hover td{background:var(--blue-pale)}
 
 /* Client accounts (staff dashboard) */
 .admin-tabs{display:flex;gap:8px;margin:20px 0 4px}
-.admin-tab{padding:10px 18px;border:1px solid var(--line);border-bottom:0;border-radius:8px 8px 0 0;background:#f4f7fb;color:var(--blue);font:inherit;font-weight:700;cursor:pointer}
+.admin-tab{padding:10px 18px;border:1px solid var(--line);border-bottom:0;border-radius:8px 8px 0 0;background:#F5F8FC;color:var(--blue);font:inherit;font-weight:700;cursor:pointer}
 .admin-tab.active{background:var(--blue);color:#fff;border-color:var(--blue)}
 .status-on_hold{background:#fde8e8;color:#8f1d1d}
 .acct-sort-btn{background:none;border:0;color:#fff;font:inherit;font-weight:700;cursor:pointer;padding:0;text-align:left}
@@ -229,18 +238,18 @@ tr.clickable-row:hover td{background:var(--blue-pale)}
 .tx-form{display:grid;grid-template-columns:1fr 1fr;gap:0 16px;border:1px solid var(--line);border-radius:var(--radius);padding:20px;margin:16px 0}
 .tx-form .btn{grid-column:1 / -1;justify-self:start}
 #deposit-fields{display:grid;grid-template-columns:1fr 140px;gap:0 16px;border:1px solid var(--line);border-radius:var(--radius);padding:20px;margin:16px 0}
-#detail-account{border:1px solid var(--line);border-radius:var(--radius);padding:20px;margin:16px 0;background:#f4f7fb}
+#detail-account{border:1px solid var(--line);border-radius:var(--radius);padding:20px;margin:16px 0;background:#F5F8FC}
 #detail-account h3{margin-top:0}
 @media(max-width:640px){.tx-form,#deposit-fields{grid-template-columns:1fr}}
 
 /* Money transfers */
-.notice-box{border:1px solid #bfd9f2;background:#eef5fd;border-radius:var(--radius);padding:14px 18px;margin-top:20px}
+.notice-box{border:1px solid #C7D8EE;background:#EDF3FB;border-radius:var(--radius);padding:14px 18px;margin-top:20px}
 .notice-box p{margin:0;opacity:1}
 .region-tabs{display:flex;gap:8px;flex-wrap:wrap;margin:20px 0 8px}
 .region-tab{padding:10px 18px;border:1px solid var(--line);border-radius:999px;background:#fff;color:var(--blue);font:inherit;font-weight:700;cursor:pointer}
 .region-tab.active{background:var(--blue);color:#fff;border-color:var(--blue)}
 .bank-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin:16px 0 28px}
-.bank-card{border:1px solid var(--line);border-radius:var(--radius);padding:18px;background:#fff;cursor:pointer;text-align:left;font:inherit}
+.bank-card{border:1px solid var(--line);border-radius:var(--radius);padding:18px;background:#fff;cursor:pointer;text-align:left;font:inherit;box-shadow:var(--shadow-soft)}
 .bank-card:hover{border-color:var(--blue-light)}
 .bank-card.selected{border:2px solid var(--blue);background:var(--blue-pale)}
 .bank-card h3{margin:0 0 4px;color:var(--blue);font-size:17px}
