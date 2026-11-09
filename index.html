@@ -31,73 +31,98 @@
 </header>
 
 <section class="hero">
-  <div class="container">
-    <h1 data-i18n="home_hero_title">Votre argent, sur des fondations solides</h1>
-    <p data-i18n="home_hero_sub">Comptes, épargne, prêts et paiements — des services bancaires clairs, pour les particuliers comme pour les entreprises.</p>
-    <div class="cta-row">
-      <a class="btn btn-light" href="open-account.html" data-i18n="cta_open">Ouvrir un compte</a>
-      <a class="btn btn-outline" style="color:#fff;border-color:#fff" href="client-login.html" data-i18n="nav_signin">Se connecter</a>
-      <a class="btn btn-outline" style="color:#fff;border-color:#fff" href="#services" data-i18n="cta_learn">En savoir plus</a>
+  <div class="container hero-split">
+    <div class="hero-copy">
+      <h1 data-i18n="home_hero_title">Une banque construite autour de vous</h1>
+      <p data-i18n="home_hero_sub">Comptes, épargne, prêts et paiements — une banque claire pour les particuliers et les entreprises, avec une équipe qui vous connaît.</p>
+      <div class="cta-row">
+        <a class="btn" href="open-account.html" data-i18n="cta_open">Ouvrir un compte</a>
+        <a class="btn btn-outline" href="client-login.html" data-i18n="nav_signin">Se connecter</a>
+        <a class="btn btn-light" href="#services" data-i18n="cta_learn">En savoir plus</a>
+      </div>
     </div>
     <figure class="hero-photo"><img src="images/hero-family.jpg" alt="Famille réunie au coucher du soleil" data-i18n-alt="alt_hero_family"></figure>
   </div>
 </section>
 
-<section class="section">
+<section class="section rates-teaser center">
   <div class="container">
-    <h2 data-i18n="home_trust_title">Pourquoi nous choisir</h2>
+    <h2 data-i18n="home_rates_title">Des taux qui font grandir votre argent</h2>
+    <p class="lead" data-i18n="home_rates_lead">Des taux clairs sur l'épargne, les dépôts et les prêts — sans surprises ni frais cachés.</p>
     <div class="grid">
-      <div class="card"><h3 data-i18n="trust1_t">Des fondations solides</h3><p data-i18n="trust1_d">Une banque construite pour durer, avec des processus clairs et transparents.</p></div>
-      <div class="card"><h3 data-i18n="trust2_t">Des services simples</h3><p data-i18n="trust2_d">Pas de jargon inutile : chaque service est expliqué en langage clair.</p></div>
-      <div class="card"><h3 data-i18n="trust3_t">Un accompagnement humain</h3><p data-i18n="trust3_d">Des conseillers en agence et en ligne pour répondre à vos questions.</p></div>
+      <div class="card rate-card"><p class="rate-name" data-i18n="per_savings_title">Compte d'épargne</p><p class="rate-value"><span class="placeholder">[Rate to be confirmed]</span></p><p class="rate-terms" data-i18n="rates_sav_terms">Versements libres</p></div>
+      <div class="card rate-card"><p class="rate-name" data-i18n="rates_term12_name">Dépôt à terme 12 mois</p><p class="rate-value"><span class="placeholder">[Rate to be confirmed]</span></p><p class="rate-terms" data-i18n="rates_term12_terms">Montant bloqué 12 mois</p></div>
+      <div class="card rate-card"><p class="rate-name" data-i18n="loan_personal_title">Prêt personnel</p><p class="rate-value"><span class="placeholder">[Rate to be confirmed]</span></p><p class="rate-terms" data-i18n="rates_loan60">Jusqu'à 60 mois</p></div>
+    </div>
+    <a class="rates-link" href="rates.html" data-i18n="home_rates_link">Voir tous les taux et frais</a>
+    <p class="rates-note" data-i18n="home_rates_note">Les taux affichés sont indicatifs et susceptibles de changer. Conditions générales applicables.</p>
+  </div>
+</section>
+
+<section class="section care-band">
+  <div class="container care-inner">
+    <div>
+      <h2 data-i18n="home_care_title">Service client</h2>
+      <p data-i18n="home_care_text">Une question sur votre compte, un prêt ou un virement ? Notre équipe est là pour vous aider — en agence, par téléphone ou en ligne.</p>
+    </div>
+    <a class="btn btn-light" href="contact.html" data-i18n="home_care_link">Nous contacter</a>
+  </div>
+</section>
+
+<section class="section center" id="services">
+  <div class="container">
+    <h2 data-i18n="home_help_title">Comment pouvons-nous vous aider ?</h2>
+    <p class="lead" data-i18n="home_help_lead">Des solutions bancaires pour chaque aspect de votre vie et de votre activité.</p>
+    <div class="grid" style="text-align:left">
+      <div class="card svc"><h3 data-i18n="home_svc_deposit_t">Comptes de dépôt</h3><p data-i18n="home_svc_deposit_d">Gardez votre argent en sécurité avec des comptes d'épargne et courants pensés pour le quotidien.</p><a class="card-link" href="personal.html" data-i18n="cta_learn">En savoir plus</a></div>
+      <div class="card svc"><h3 data-i18n="home_svc_credit_t">Cartes de crédit</h3><p data-i18n="home_svc_credit_d">Une carte adaptée à vos dépenses, avec des limites claires et des relevés simples.</p><a class="card-link" href="digital.html" data-i18n="cta_learn">En savoir plus</a></div>
+      <div class="card svc"><h3 data-i18n="home_svc_loans_t">Prêts</h3><p data-i18n="home_svc_loans_d">Des taux compétitifs pour vos prêts personnels, immobiliers et professionnels, adaptés à vos projets.</p><a class="card-link" href="loans.html" data-i18n="cta_learn">En savoir plus</a></div>
+      <div class="card svc"><h3 data-i18n="home_svc_business_t">Banque des entreprises</h3><p data-i18n="home_svc_business_d">Comptes, financements et solutions de paiement pour faire grandir votre entreprise.</p><a class="card-link" href="business.html" data-i18n="cta_learn">En savoir plus</a></div>
+      <div class="card svc"><h3 data-i18n="home_svc_wealth_t">Épargne et retraite</h3><p data-i18n="home_svc_wealth_d">Préparez l'avenir avec une épargne et des dépôts à terme qui grandissent avec vous.</p><a class="card-link" href="personal.html" data-i18n="cta_learn">En savoir plus</a></div>
+      <div class="card svc"><h3 data-i18n="home_svc_about_t">À propos de notre banque</h3><p data-i18n="home_svc_about_d">Découvrez notre engagement pour une banque honnête et les communautés que nous servons.</p><a class="card-link" href="#about" data-i18n="cta_learn">En savoir plus</a></div>
     </div>
   </div>
 </section>
 
-<section class="section">
+<section class="section promo-band">
   <div class="container">
-    <h2 data-i18n="val_section_title">Nos valeurs</h2>
-    <div class="grid">
-      <div class="card value-card"><img src="images/family-home.jpg" loading="lazy" decoding="async" alt="Mère et ses enfants à la maison" data-i18n-alt="alt_family_home"><h3 data-i18n="val_united_title">Unis</h3><p data-i18n="val_united_desc">Nous avançons avec les familles et les communautés que nous servons.</p></div>
-      <div class="card value-card"><img src="images/business-meeting.jpg" loading="lazy" decoding="async" alt="Poignée de main entre professionnels" data-i18n-alt="alt_business_meeting"><h3 data-i18n="val_trust_title">Confiance</h3><p data-i18n="val_trust_desc">Des engagements clairs, des frais transparents et une parole tenue.</p></div>
-      <div class="card value-card"><img src="images/savings-growth.jpg" loading="lazy" decoding="async" alt="Jeune plante poussant sur des pièces de monnaie" data-i18n-alt="alt_savings_growth"><h3 data-i18n="val_growth_title">Croissance</h3><p data-i18n="val_growth_desc">Une épargne qui travaille, pour financer vos projets pas à pas.</p></div>
-      <div class="card value-card"><img src="images/construction-site.jpg" loading="lazy" decoding="async" alt="Ouvriers sur un chantier de construction" data-i18n-alt="alt_construction"><h3 data-i18n="val_foundations_title">Des fondations solides</h3><p data-i18n="val_foundations_desc">Comme un chantier bien construit, vos finances reposent sur du solide.</p></div>
+    <h2 data-i18n="home_promo_title">Ouvrez votre compte aujourd'hui</h2>
+    <p class="lead" data-i18n="home_promo_sub">Commencez avec nous — faites votre demande en ligne en quelques minutes, ou rendez-vous dans l'une de nos agences.</p>
+    <ul class="promo-list">
+      <li data-i18n="home_promo_b1">Demande en ligne en quelques minutes</li>
+      <li data-i18n="home_promo_b2">Application mobile, USSD et Mobile Money</li>
+      <li data-i18n="home_promo_b3">Un accompagnement humain, en agence et en ligne</li>
+    </ul>
+    <a class="btn btn-light" href="open-account.html" data-i18n="cta_open">Ouvrir un compte</a>
+  </div>
+</section>
+
+<section class="section" id="about">
+  <div class="container">
+    <div class="about-media">
+      <img src="images/business-team.jpg" alt="Équipe de travail autour d'une table" data-i18n-alt="alt_business_team">
+      <div>
+        <h2 data-i18n="home_about_title">Plus forts ensemble</h2>
+        <p class="lead" data-i18n="home_about_text">Industrial Commercial Bank est une banque de plein exercice, construite pour aider chaque client à avancer — avec des conditions claires, des taux justes et des personnes qui répondent quand vous appelez.</p>
+      </div>
+    </div>
+    <div class="features">
+      <div class="feature"><h3 data-i18n="home_feat1_t">Des taux justes</h3><p data-i18n="home_feat1_d">De meilleurs taux sur l'épargne et les prêts, pour que votre argent aille plus loin.</p></div>
+      <div class="feature"><h3 data-i18n="home_feat2_t">Les personnes d'abord</h3><p data-i18n="home_feat2_d">Nous répondons à nos clients, pas à des actionnaires. Vos objectifs passent d'abord.</p></div>
+      <div class="feature"><h3 data-i18n="home_feat3_t">Ancrés dans nos communautés</h3><p data-i18n="home_feat3_d">Nous soutenons les quartiers et les causes qui comptent pour les personnes que nous servons.</p></div>
     </div>
   </div>
 </section>
 
-<section class="section alt" id="services">
+<!-- SAMPLE testimonials — replace with real client testimonials provided by the bank -->
+<section class="section testimonials center">
   <div class="container">
-    <h2 data-i18n="home_services_title">Nos principaux services</h2>
-    <p class="lead" data-i18n="home_services_lead">Les services essentiels d'une banque moderne, avec un accompagnement humain.</p>
-    <div class="grid">
-      <div class="card"><h3 data-i18n="svc_transfers">Virements et transferts</h3><p data-i18n="svc_transfers_d">Envoyez et recevez de l'argent simplement, en agence ou en ligne.</p><p><a href="transfers.html">→</a></p></div>
-      <div class="card"><h3 data-i18n="svc_savings">Épargne et dépôts</h3><p data-i18n="svc_savings_d">Faites fructifier votre argent avec des comptes d'épargne et des dépôts à terme.</p><p><a href="personal.html">→</a></p></div>
-      <div class="card"><h3 data-i18n="svc_loans">Prêts</h3><p data-i18n="svc_loans_d">Prêts personnels, immobiliers et professionnels, avec un simulateur en ligne.</p><p><a href="loans.html">→</a></p></div>
-      <div class="card"><h3 data-i18n="svc_business">Services aux entreprises</h3><p data-i18n="svc_business_d">Comptes professionnels, prêts, paie et solutions marchandes.</p><p><a href="business.html">→</a></p></div>
-      <div class="card"><h3 data-i18n="svc_cards">Cartes bancaires</h3><p data-i18n="svc_cards_d">Cartes de débit pour payer et retirer au quotidien.</p><p><a href="digital.html">→</a></p></div>
-      <div class="card"><h3 data-i18n="svc_digital">Banque digitale</h3><p data-i18n="svc_digital_d">Application mobile, USSD et Mobile Money, partout où vous êtes.</p><p><a href="digital.html">→</a></p></div>
+    <h2 data-i18n="home_test_title">Ce que disent nos clients</h2>
+    <div class="grid" style="text-align:left">
+      <div class="card quote-card"><blockquote data-i18n="home_test1_q">L'ouverture de mon compte a été rapide, et l'équipe a tout expliqué clairement.</blockquote><p class="quote-name" data-i18n="home_test1_n">Sarah</p><p class="quote-role" data-i18n="home_test1_r">Banque des particuliers</p></div>
+      <div class="card quote-card"><blockquote data-i18n="home_test2_q">Un bon service et des taux justes. Je les recommande.</blockquote><p class="quote-name" data-i18n="home_test2_n">John</p><p class="quote-role" data-i18n="home_test2_r">Chef d'entreprise</p></div>
+      <div class="card quote-card"><blockquote data-i18n="home_test3_q">L'application mobile est facile à utiliser et le support répond vite.</blockquote><p class="quote-name" data-i18n="home_test3_n">Emily</p><p class="quote-role" data-i18n="home_test3_r">Banque des particuliers</p></div>
     </div>
-  </div>
-</section>
-
-<section class="section">
-  <div class="container">
-    <h2 data-i18n="home_how_title">Ouvrir un compte en 3 étapes</h2>
-    <div class="steps">
-      <div class="step"><div class="num">1</div><h3 data-i18n="step1_t">1. Faites votre demande</h3><p data-i18n="step1_d">Remplissez le formulaire d'ouverture de compte en ligne.</p></div>
-      <div class="step"><div class="num">2</div><h3 data-i18n="step2_t">2. Nous vérifions votre dossier</h3><p data-i18n="step2_d">Notre équipe examine vos informations et votre pièce d'identité.</p></div>
-      <div class="step"><div class="num">3</div><h3 data-i18n="step3_t">3. Votre compte est ouvert</h3><p data-i18n="step3_d">Vous recevez la confirmation et les détails de votre compte.</p></div>
-    </div>
-    <p style="margin-top:24px"><a class="btn" href="open-account.html" data-i18n="cta_open">Ouvrir un compte</a></p>
-  </div>
-</section>
-
-<section class="section alt">
-  <div class="container">
-    <h2 data-i18n="home_cta_title">Prêt à commencer ?</h2>
-    <p class="lead" data-i18n="home_cta_sub">Faites votre demande d'ouverture de compte en ligne. Notre équipe l'examine et vous accompagne.</p>
-    <p><a class="btn" href="open-account.html" data-i18n="cta_open">Ouvrir un compte</a></p>
   </div>
 </section>
 
@@ -117,6 +142,9 @@
       <li><span data-i18n="label_phone">Tél :</span> <span class="placeholder">[Phone to be added]</span></li>
       <li><span data-i18n="label_email">E-mail :</span> <span class="placeholder">[Email to be added]</span></li>
       <li><span data-i18n="label_address">Adresse :</span> <span class="placeholder">[Address to be added]</span></li>
+    </ul></div>
+    <div><h4 data-i18n="footer_hours_title">Heures d'ouverture</h4><ul>
+      <li><span class="placeholder">[Hours to be confirmed]</span></li>
     </ul></div>
     <div><h4 data-i18n="footer_legal_title">Mentions légales</h4><ul>
       <li><a href="legal.html" data-i18n="footer_legal_link">Confidentialité et conditions</a></li>
